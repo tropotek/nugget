@@ -15,7 +15,8 @@ class Importer
 {
     /** @var list<class-string<Pass>> in the order they depend on each other */
     public const PASSES = [
-        // Added by tasks 81 to 84: users and exchanges, assets, the asset log, ticks.
+        Passes\UsersPass::class,
+        Passes\ExchangesPass::class,
     ];
 
     /**

@@ -74,10 +74,14 @@ class ImporterTest extends TestCase
 
     public function test_the_connection_is_set_by_the_tkbtc_db_variables(): void
     {
-        $config = require config_path('database.php');
+        $config = file_get_contents(config_path('database.php'));
 
-        $this->assertSame('mariadb', $config['connections']['tkbtc']['driver']);
-        $this->assertSame('tkbtc', $config['connections']['tkbtc']['database']);
+        foreach (['TKBTC_DB_CONNECTION', 'TKBTC_DB_HOST', 'TKBTC_DB_PORT', 'TKBTC_DB_DATABASE', 'TKBTC_DB_USERNAME', 'TKBTC_DB_PASSWORD'] as $variable) {
+            $this->assertStringContainsString("env('{$variable}'", $config);
+        }
+
+        // Under test it is never the real one, whatever .env says.
+        $this->assertSame('sqlite', config('database.connections.tkbtc.driver'));
         $this->assertStringContainsString('TKBTC_DB_HOST', file_get_contents(base_path('.env.example')));
     }
 
@@ -299,12 +303,5 @@ class ImporterTest extends TestCase
             ->assertFailed();
 
         $this->assertSame(0, User::count());
-    }
-
-    public function test_with_no_passes_yet_the_command_says_so(): void
-    {
-        $this->artisan('nugget:import-tkbtc')
-            ->expectsOutputToContain('There are no import passes yet, so nothing was imported.')
-            ->assertSuccessful();
     }
 }

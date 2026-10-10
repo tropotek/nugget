@@ -28,6 +28,9 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
+        <!-- The import's source is never a real tkbtc database under test. -->
+        <env name="TKBTC_DB_CONNECTION" value="sqlite"/>
+        <env name="TKBTC_DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
@@ -41,6 +44,9 @@
         <server name="CACHE_STORE" value="array" force="true"/>
         <server name="DB_CONNECTION" value="sqlite" force="true"/>
         <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="TKBTC_DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="TKBTC_DB_DATABASE" value=":memory:" force="true"/>
+        <server name="TKBTC_DB_URL" value="" force="true"/>
         <server name="SESSION_DRIVER" value="array" force="true"/>
         <server name="QUEUE_CONNECTION" value="sync" force="true"/>
     </php>
