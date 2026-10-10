@@ -37,9 +37,13 @@ return [
     | The Swissquote forex feed that prices an asset with a feed symbol. The
     | symbol (XAU/AUD) is added to the URL.
     |
+    | A price is fetched every 5 minutes and kept for this many hours. The
+    | last price of each day is kept for good.
+    |
     */
 
     'prices' => [
+        'intraday_hours' => (int) env('NUGGET_PRICE_INTRADAY_HOURS', 48),
         'feed_url' => env('NUGGET_PRICE_FEED_URL', 'https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument'),
     ],
 

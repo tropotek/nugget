@@ -21,6 +21,7 @@ docker compose exec app composer fresh                     # wipe the database, 
 docker compose exec app php artisan nugget:rematch         # rebuild parcels and disposals (--asset=ID, --year=2025)
 docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
 docker compose exec app php artisan nugget:fetch-prices    # fetch and store every active asset's price now (--asset=ID)
+docker compose exec app php artisan nugget:prune-prices    # delete intraday prices older than 48 hours
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -30,7 +31,7 @@ docker compose build app                          # after changing the Dockerfil
 |---|---|---|
 | `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
 | `vite` | http://localhost:5778 | Vite dev server, hot reload |
-| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed every 5 minutes |
+| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed every 5 minutes, and prunes them nightly |
 | `mailpit` | http://localhost:8779 | catches all outgoing mail |
 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
