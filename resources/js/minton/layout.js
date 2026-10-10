@@ -7,16 +7,17 @@ Contact: support@coderthemes.com
 File: Layouts Js File
 */
 
-// Nugget: lifted from Minton with two changes.
+// Nugget: lifted from Minton with three changes.
 // - jQuery and Bootstrap are imported here rather than read from window, so neither is a global.
 // - adjustLayout() used the `html` variable of the function below (out of scope there, so it threw on
 //   any window 1140px wide or less). It now uses this.html.
+// - The settings are kept in localStorage, not sessionStorage, so the light or dark choice outlasts the tab.
+//   The <head> script in components/layouts/head.blade.php reads the same key.
 import $ from 'jquery';
 import * as bootstrap from 'bootstrap';
 
 (function () {
-    var savedConfig = sessionStorage.getItem("__MINTON_CONFIG__");
-    // var savedConfig = localStorage.getItem("__MINTON_CONFIG__");
+    var savedConfig = localStorage.getItem("__MINTON_CONFIG__");
 
     var html = document.getElementsByTagName("html")[0];
 
@@ -520,8 +521,7 @@ class ThemeCustomizer {
 
     setSwitchFromConfig() {
 
-        sessionStorage.setItem('__MINTON_CONFIG__', JSON.stringify(this.config));
-        // localStorage.setItem('__MINTON_CONFIG__', JSON.stringify(this.config));
+        localStorage.setItem('__MINTON_CONFIG__', JSON.stringify(this.config));
 
         document.querySelectorAll('.right-bar input[type=checkbox]').forEach(function (checkbox) {
             checkbox.checked = false;

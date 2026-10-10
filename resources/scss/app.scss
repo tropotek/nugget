@@ -62,3 +62,9 @@
 @import "custom/plugins/slimscroll";
 
 // Nugget
+
+// The top bar's light/dark button shows a moon in light mode and a sun in dark mode.
+html[data-bs-theme="dark"] .theme-icon-light,
+html:not([data-bs-theme="dark"]) .theme-icon-dark {
+    display: none;
+}
