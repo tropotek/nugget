@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AssetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\ApplySettings;
@@ -19,6 +20,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // The owner only, by OwnerPolicy. An asset's own page is still to come.
+    Route::resource('assets', AssetController::class)->except(['show']);
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

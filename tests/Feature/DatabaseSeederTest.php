@@ -123,7 +123,7 @@ class DatabaseSeederTest extends TestCase
         $assets = User::where('email', 'admin@example.com')->sole()->assets;
 
         $this->assertEqualsCanonicalizing(
-            ['Bitcoin', 'Bitcoin cold wallet', 'Cardano', 'Gold bullion', 'Silver bullion', 'Prospected gold', 'Coin collection'],
+            ['Bitcoin', 'Bitcoin cold wallet', 'Cardano', 'Litecoin', 'Gold bullion', 'Silver bullion', 'Prospected gold', 'Coin collection'],
             $assets->pluck('name')->all(),
         );
         $this->assertEqualsCanonicalizing(
@@ -140,6 +140,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame('BTC/AUD', $bitcoin->market_id);
         $this->assertSame('g', $assets->firstWhere('name', 'Prospected gold')->unit);
         $this->assertFalse($assets->firstWhere('name', 'Coin collection')->in_total);
+        $this->assertSame(['Litecoin'], $assets->where('archived', true)->pluck('name')->all());
 
         $this->assertSame(1, User::where('email', 'member@example.com')->sole()->assets()->count());
     }

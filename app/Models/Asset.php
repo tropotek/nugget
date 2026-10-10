@@ -18,9 +18,12 @@ use LogicException;
  * price source: a market on one of the user's exchanges, a feed symbol, or
  * neither for an asset with no price.
  *
+ * An archived asset is left off the lists. Its ledger and its holding stay as
+ * they are.
+ *
  * The owner is set through the user's relation, so it is not fillable.
  */
-#[Fillable(['name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol', 'in_total', 'notes'])]
+#[Fillable(['name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol', 'in_total', 'archived', 'notes'])]
 class Asset extends Model implements Owned
 {
     /** @use HasFactory<AssetFactory> */
@@ -29,6 +32,7 @@ class Asset extends Model implements Owned
     /** @var array<string, mixed> */
     protected $attributes = [
         'in_total' => true,
+        'archived' => false,
     ];
 
     protected static function booted(): void
@@ -44,6 +48,7 @@ class Asset extends Model implements Owned
         return [
             'class' => AssetClass::class,
             'in_total' => 'boolean',
+            'archived' => 'boolean',
         ];
     }
 
@@ -82,6 +87,15 @@ class Asset extends Model implements Owned
     public function ownerId(): int
     {
         return $this->user_id;
+    }
+
+    /**
+     * The symbol and the unit decide which assets transfers join, so they are
+     * fixed once the asset has a transaction, and it can no longer be deleted.
+     */
+    public function hasTransactions(): bool
+    {
+        return $this->transactions()->exists();
     }
 
     public function pricedBy(): PricedBy

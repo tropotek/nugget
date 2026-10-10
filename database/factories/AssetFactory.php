@@ -72,6 +72,11 @@ class AssetFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (array $attributes) => ['archived' => true]);
+    }
+
     /**
      * Priced by a market on this exchange, and owned by the exchange's user.
      */

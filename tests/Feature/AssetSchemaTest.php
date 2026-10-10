@@ -24,7 +24,7 @@ class AssetSchemaTest extends TestCase
         $this->assertEqualsCanonicalizing(
             [
                 'id', 'user_id', 'name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol',
-                'in_total', 'notes', 'created_at', 'updated_at',
+                'in_total', 'archived', 'notes', 'created_at', 'updated_at',
             ],
             Schema::getColumnListing('assets'),
         );

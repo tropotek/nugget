@@ -52,6 +52,10 @@ class DatabaseSeeder extends Seeder
         $cardano = $this->asset($admin, 'Cardano', fn (AssetFactory $asset) => $asset
             ->onExchange($btcMarkets, 'ADA/AUD')
             ->state(['symbol' => 'ADA', 'unit' => 'ADA']));
+        $litecoin = $this->asset($admin, 'Litecoin', fn (AssetFactory $asset) => $asset
+            ->onExchange($btcMarkets, 'LTC/AUD')
+            ->archived()
+            ->state(['symbol' => 'LTC', 'unit' => 'LTC', 'notes' => 'Sold out and archived.']));
         $gold = $this->asset($admin, 'Gold bullion', fn (AssetFactory $asset) => $asset->metal());
         $silver = $this->asset($admin, 'Silver bullion', fn (AssetFactory $asset) => $asset
             ->metal()
@@ -82,6 +86,10 @@ class DatabaseSeeder extends Seeder
             ['2025-06-30 13:00', 'reward', '18.5', '0.86'],
             ['2025-12-01 02:00', 'sell', '1000', '0.71', '6.04'],
             ['2026-07-04 01:00', 'adjust', '-0.5'],
+        ]);
+        $this->history($litecoin, TransactionSource::Exchange, [
+            ['2024-07-10 03:30', 'buy', '5', '105', '4.46'],
+            ['2025-02-14 00:20', 'sell', '5', '198', '8.42'],
         ]);
         $this->history($gold, TransactionSource::Manual, [
             ['2024-07-19 02:30', 'buy', '2', '3640'],
