@@ -1,4 +1,7 @@
-{{-- $search: the App\Ledger\TransactionSearch in force. The filters swap #transaction-table by htmx on every change. --}}
+{{--
+    $search: the App\Ledger\TransactionSearch in force. The filters swap #transaction-table by htmx on every change.
+    The order is sent with them from hidden fields in the table, which the swap keeps up to date.
+--}}
 <x-layouts.app title="Transactions">
     <x-slot:actions>
         <a href="{{ route('transactions.create', array_filter(['asset' => $search->assetId])) }}" class="btn btn-primary"><i class="ri-add-line me-1"></i>Add transaction</a>
@@ -6,14 +9,9 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="GET" action="{{ route('transactions.index') }}" class="row g-2 align-items-end mb-3"
+            <form id="transaction-filters" method="GET" action="{{ route('transactions.index') }}" class="row g-2 align-items-end mb-3"
                 hx-get="{{ route('transactions.index') }}" hx-trigger="change" hx-target="#transaction-table" hx-swap="outerHTML" hx-push-url="true">
-                @unless ($search->sort === 'date' && $search->descending)
-                    <input type="hidden" name="sort" value="{{ $search->sort }}">
-                    <input type="hidden" name="dir" value="{{ $search->descending ? 'desc' : 'asc' }}">
-                @endunless
-
-                <div class="col-sm-6 col-lg-3">
+                <div class="col-sm-6 col-lg-2">
                     <label for="asset" class="form-label">Asset</label>
                     <select id="asset" name="asset" class="form-select">
                         <option value="">All assets</option>
@@ -52,12 +50,12 @@
                     </select>
                 </div>
 
-                <div class="col-sm-6 col-lg-auto">
+                <div class="col-sm-6 col-lg-2">
                     <label for="from" class="form-label">From</label>
                     <input type="date" id="from" name="from" value="{{ $search->from?->toDateString() }}" class="form-control">
                 </div>
 
-                <div class="col-sm-6 col-lg-auto">
+                <div class="col-sm-6 col-lg-2">
                     <label for="to" class="form-label">To</label>
                     <input type="date" id="to" name="to" value="{{ $search->to?->toDateString() }}" class="form-control">
                 </div>

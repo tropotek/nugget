@@ -291,8 +291,13 @@ class TransactionListTest extends TestCase
     public function test_a_search_keeps_its_order_when_the_filters_change(): void
     {
         $this->get('/transactions?sort=units&dir=desc')
-            ->assertSee('<input type="hidden" name="sort" value="units">', false)
-            ->assertSee('<input type="hidden" name="dir" value="desc">', false);
+            ->assertSee('<form id="transaction-filters"', false)
+            ->assertSee('<input type="hidden" name="sort" value="units" form="transaction-filters">', false)
+            ->assertSee('<input type="hidden" name="dir" value="desc" form="transaction-filters">', false);
+
+        // The fields are in the table, so a swap of the table brings the new order to the form.
+        $this->get('/transactions?sort=units&dir=desc', ['HX-Target' => 'transaction-table'])
+            ->assertSee('name="sort" value="units" form="transaction-filters"', false);
 
         $this->get('/transactions')->assertDontSee('name="sort"', false);
     }

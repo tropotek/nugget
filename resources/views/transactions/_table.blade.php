@@ -14,6 +14,12 @@
 @endphp
 
 <div id="transaction-table" hx-boost="true" hx-target="#transaction-table" hx-swap="outerHTML" hx-push-url="true">
+    {{-- The order, as fields of the filter form, so that a change of filter keeps it. --}}
+    @unless ($search->sort === 'date' && $search->descending)
+        <input type="hidden" name="sort" value="{{ $search->sort }}" form="transaction-filters">
+        <input type="hidden" name="dir" value="{{ $search->descending ? 'desc' : 'asc' }}" form="transaction-filters">
+    @endunless
+
     <div class="table-responsive">
         <table class="table table-hover table-centered mb-0">
             <thead class="table-light">

@@ -47,7 +47,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-sm-6 mb-3">
+                            <div class="col-sm-5 mb-3">
                                 <label for="type" class="form-label">Type</label>
                                 <select id="type" name="type" required{{ $off }} @class(['form-select', 'is-invalid' => $errors->has('type')])>
                                     @foreach ($types as $type)
@@ -59,7 +59,7 @@
                                 @enderror
                             </div>
 
-                            <div class="col-sm-6 mb-3">
+                            <div class="col-sm-7 mb-3">
                                 <label for="occurred_at" class="form-label">Date and time</label>
                                 <input type="datetime-local" id="occurred_at" name="occurred_at" value="{{ old('occurred_at', $occurredAt) }}" step="1" required{{ $off }}
                                     @class(['form-control', 'is-invalid' => $errors->has('occurred_at')])>
