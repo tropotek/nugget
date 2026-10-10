@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExchangeController;
@@ -27,6 +28,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // The user's own API tokens, on the profile page. A token is shown once, when it is made.
+    Route::post('/profile/tokens', [ApiTokenController::class, 'store'])->name('profile.tokens.store');
+    Route::delete('/profile/tokens/{token}', [ApiTokenController::class, 'destroy'])->name('profile.tokens.destroy');
 
     // The owner only, by OwnerPolicy.
     Route::resource('assets', AssetController::class);

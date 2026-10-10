@@ -17,6 +17,7 @@ class ProfileController extends Controller
         return view('profile.edit', [
             'user' => $request->user(),
             'timezones' => DateTimeZone::listIdentifiers(),
+            'tokens' => $request->user()->tokens()->latest()->latest('id')->get(),
         ]);
     }
 

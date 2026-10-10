@@ -124,6 +124,19 @@ return [
         'default_asset_classes' => ['crypto'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | API
+    |--------------------------------------------------------------------------
+    |
+    | How many requests a minute one API token may make.
+    |
+    */
+
+    'api' => [
+        'per_minute' => (int) env('NUGGET_API_PER_MINUTE', 60),
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),
