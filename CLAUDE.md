@@ -24,6 +24,7 @@ docker compose exec app php artisan nugget:fetch-prices    # fetch and store eve
 docker compose exec app php artisan nugget:prune-prices    # delete intraday prices older than 48 hours
 docker compose exec app php artisan nugget:sync-exchanges  # sync every active exchange now (--exchange=ID, --all-trades)
 docker compose exec app php artisan nugget:prune-notifications   # delete read notifications older than 30 days
+docker compose exec app php artisan nugget:import-tkbtc    # import a tkbtc database, the TKBTC_DB_* connection (--dry-run, --fresh)
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -47,6 +48,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `app/`: application code, `App\` namespace.
 - `app/Ledger/`: the calculations on the ledger: the parcel matcher, the holdings query, valuations and the value series.
 - `app/Api/`: what each API endpoint and MCP tool returns, as plain arrays.
+- `app/Import/`: the tkbtc import: the source, the passes and the map from tkbtc ids to Nugget ids.
 - `app/Tax/`: the capital gains report: the calculator, a section's totals and the year's summary.
 - `app/Prices/`: where prices are read from (an exchange's ticker, the Swissquote feed).
 - `app/Exchanges/`: Nugget's own exchange drivers and the registry that makes them.
@@ -109,6 +111,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.
 - The stored parcels show what is left now. What a sale could use at its own moment comes from `ParcelMatcher::openBefore($sale)`, which replays the ledger up to the sale and rolls back: the parcels it returns are not rows, so read them and never save them. `App\Ledger\ParcelChoice::forSale()` turns them into the lines of the parcel picker.
 - A user's capital gains for a year come from `App\Tax\CgtCalculator::forYear($user, $year, $carriedForward)`: an `App\Tax\CgtReport` with the disposals by `App\Enums\TaxSection` (crypto, other) and the `CgtSummary`. Every screen, file and API that shows the report reads this and works nothing out itself. What the user chose for a year is in `App\Models\TaxYear`: the losses carried forward and the asset classes the report takes in (crypto only unless chosen: `nugget.tax.default_asset_classes`). `forYear()` uses both when it is given neither, and a class left out is out of the sections and the summary alike. The arithmetic is in `CgtSummary::of()`, which has no database.
+- The tkbtc import (`nugget:import-tkbtc`) is a list of `App\Import\Pass`es in `Importer::PASSES`, run in order in one database transaction. A pass maps every tkbtc row it brings over (`$context->map($type, $legacyId, $newId)`), passes over one already mapped, and can clear what it added. It reads tkbtc through `$context->source->db()` and never writes to it. Its tests use the `TkbtcDatabase` trait: an in-memory SQLite copy of tkbtc's tables with made-up rows.
 - A PDF is made with dompdf from a Blade view of plain HTML with its own stylesheet (`App\Tax\TaxReportPdf`, `tax-report/pdf.blade.php`): no remote files, no script. Pass the user to `LocalTime::of()` there rather than relying on who is signed in.
 - A CSV download is streamed with `response()->streamDownload()` from a generator of rows (`App\Tax\TaxReportCsv`): dates as `Y-m-d` in the user's timezone, amounts as plain numbers, a byte order mark first, and any text the user typed that starts like a formula given a leading apostrophe.
 - The parcel matcher and the tax calculator are written test-first.

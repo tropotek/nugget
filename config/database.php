@@ -37,6 +37,26 @@ return [
 
     'connections' => [
 
+        /*
+        | The tkbtc database that `nugget:import-tkbtc` reads: a restored dump
+        | or the live server. Nothing is written to it.
+        */
+        'tkbtc' => [
+            'driver' => env('TKBTC_DB_CONNECTION', 'mariadb'),
+            'url' => env('TKBTC_DB_URL'),
+            'host' => env('TKBTC_DB_HOST', '127.0.0.1'),
+            'port' => env('TKBTC_DB_PORT', '3306'),
+            'database' => env('TKBTC_DB_DATABASE', 'tkbtc'),
+            'username' => env('TKBTC_DB_USERNAME', 'root'),
+            'password' => env('TKBTC_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
