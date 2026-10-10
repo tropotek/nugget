@@ -30,7 +30,7 @@ class PasswordResetTest extends TestCase
         $this->from('/forgot-password')
             ->post('/forgot-password', ['email' => 'Kim@Example.com'])
             ->assertRedirect('/forgot-password')
-            ->assertSessionHas('status', __('passwords.sent'));
+            ->assertSessionHas('status', 'If that email belongs to an account, a reset link is on its way.');
 
         Notification::assertSentTo($user, ResetPassword::class);
     }

@@ -51,7 +51,7 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->throttleKey(), config('nugget.login.lockout_minutes') * 60);
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
@@ -68,7 +68,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), config('nugget.login.max_attempts'))) {
             return;
         }
 
@@ -89,6 +89,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return 'login:'.Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
     }
 }

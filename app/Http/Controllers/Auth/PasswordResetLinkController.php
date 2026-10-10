@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class PasswordResetLinkController extends Controller
 {
@@ -21,7 +23,8 @@ class PasswordResetLinkController extends Controller
     }
 
     /**
-     * Handle an incoming password reset link request.
+     * Always answers the same, whether or not the email has an account, so the
+     * form can't be used to discover accounts.
      *
      * @throws ValidationException
      */
@@ -34,16 +37,20 @@ class PasswordResetLinkController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        $key = 'recover:'.Str::transliterate($request->string('email').'|'.$request->ip());
+        $throttled = RateLimiter::tooManyAttempts($key, config('nugget.login.max_attempts'));
+        RateLimiter::hit($key, config('nugget.login.lockout_minutes') * 60);
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        // A send only fails for a real account, so showing the failure would
+        // reveal which emails exist. Log it and reply as normal.
+        if (! $throttled) {
+            try {
+                Password::sendResetLink($request->only('email'));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        return back()->with('status', __('If that email belongs to an account, a reset link is on its way.'));
     }
 }

@@ -43,6 +43,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
 - `resources/views/components/layouts/`: the page layouts. `app` is the signed-in shell (top bar, sidebar, page title, flash messages, footer) and `guest` the card used by the login pages; the rest are their parts.
 - `/up` (`HealthController`, `App\Support\HealthStatus`): the health check the containers poll. 200 with the version when the database accepts a write, 503 otherwise.
+- `config/nugget.php`: Nugget's own settings.
 - `config/navigation.php`: the sidebar menu, read by `App\Support\Navigation`.
 - `resources/scss/`: `app.scss` is the entry (Bootstrap, the Minton default skin, then Nugget's styles) and `icons.scss` the icon fonts. `config/default/` and `custom/` are lifted from Minton (`~/Projects/Dev/Minton/Minton/resources/scss`).
 - `resources/js/`: `app.js` is the entry. `minton/` holds the template's own scripts.
@@ -63,6 +64,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
 - Every page needs a signed-in user: put its route inside the `auth` group in `routes/web.php`. The login and password reset routes are in `routes/auth.php`. There is no registration.
+- Login and password recovery are throttled per email and IP address together, with the limits in `config/nugget.php`. Recovery and reset answer the same whether or not the email has an account; keep it that way when changing them.
 - Emails are stored in lower case and SQLite compares them exactly, so lower-case an email before looking a user up by it.
 - `laravel/breeze` is a dev dependency used only as a source of stubs to copy from `vendor/laravel/breeze/stubs/default`. Never run `breeze:install`: it would replace the layout and the Vite setup with Tailwind.
 - A user's `role` (`App\Enums\Role`: admin or member) is not mass assignable; set it with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
