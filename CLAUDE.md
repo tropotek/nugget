@@ -65,6 +65,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
 - Every page needs a signed-in user: put its route inside the `auth` group in `routes/web.php`. The login and password reset routes are in `routes/auth.php`. There is no registration.
 - Login and password recovery are throttled per email and IP address together, with the limits in `config/nugget.php`. Recovery and reset answer the same whether or not the email has an account; keep it that way when changing them.
+- Dates are stored in UTC and shown in the reader's timezone. In a view use `<x-date :value="…" />` (it takes a `format`); elsewhere use `App\Support\LocalTime::of($date)`. Never format a stored date directly.
 - Emails are stored in lower case and SQLite compares them exactly, so lower-case an email before looking a user up by it.
 - `laravel/breeze` is a dev dependency used only as a source of stubs to copy from `vendor/laravel/breeze/stubs/default`. Never run `breeze:install`: it would replace the layout and the Vite setup with Tailwind.
 - A user's `role` (`App\Enums\Role`: admin or member) is not mass assignable; set it with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
