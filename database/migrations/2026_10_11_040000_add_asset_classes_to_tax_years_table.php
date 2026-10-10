@@ -8,7 +8,8 @@ return new class extends Migration
 {
     /**
      * The asset classes a user's tax report for the year takes in, as a JSON
-     * list of App\Enums\AssetClass values. Null is every class.
+     * list of App\Enums\AssetClass values. Null is no choice made: the
+     * default classes, which are crypto only.
      */
     public function up(): void
     {

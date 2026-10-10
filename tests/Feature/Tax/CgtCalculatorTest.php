@@ -38,6 +38,9 @@ class CgtCalculatorTest extends TestCase
     {
         parent::setUp();
 
+        // Every class, where the default is crypto only: these are tests of the arithmetic across sections.
+        config(['nugget.tax.default_asset_classes' => ['crypto', 'metal', 'other']]);
+
         $this->user = User::factory()->create(['timezone' => 'Australia/Melbourne']);
         $this->bitcoin = Asset::factory()->for($this->user)->create(['name' => 'Bitcoin', 'class' => AssetClass::Crypto]);
         $this->gold = Asset::factory()->for($this->user)->create(['name' => 'Gold', 'class' => AssetClass::Metal]);

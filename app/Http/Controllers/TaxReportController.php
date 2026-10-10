@@ -82,7 +82,7 @@ class TaxReportController extends Controller
     /**
      * Save what the user chose for the year's report: the losses carried
      * forward into it and, when the form sends them, the asset classes it
-     * takes in. Every class chosen is saved as no choice at all.
+     * takes in.
      */
     public function update(Request $request, int $year): RedirectResponse
     {
@@ -108,7 +108,11 @@ class TaxReportController extends Controller
         $save = ['losses_carried_forward' => Decimal::of((string) $chosen['losses_carried_forward'])];
 
         if (isset($chosen['asset_classes'])) {
-            $save['asset_classes'] = count($chosen['asset_classes']) === count(AssetClass::cases()) ? null : $chosen['asset_classes'];
+            // In the order of AssetClass, whatever order the form sent them in.
+            $save['asset_classes'] = array_values(array_filter(
+                array_map(fn (AssetClass $class) => $class->value, AssetClass::cases()),
+                fn (string $class) => in_array($class, $chosen['asset_classes'], true),
+            ));
         }
 
         $request->user()->taxYears()->updateOrCreate(['year' => $year], $save);

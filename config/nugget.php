@@ -110,6 +110,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tax report
+    |--------------------------------------------------------------------------
+    |
+    | The asset classes (crypto, metal, other) a year's tax report takes in
+    | until its user chooses others on the report page.
+    |
+    */
+
+    'tax' => [
+        'default_asset_classes' => ['crypto'],
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

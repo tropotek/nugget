@@ -37,6 +37,8 @@ class TaxReportPageTest extends TestCase
 
         $this->travelTo('2025-08-01 02:00:00');
         Settings::set('first_report_year', 2025);
+        // Every class, where the default is crypto only. The default has its own tests below.
+        config(['nugget.tax.default_asset_classes' => ['crypto', 'metal', 'other']]);
 
         $this->user = User::factory()->create(['timezone' => 'Australia/Melbourne']);
         $this->bitcoin = Asset::factory()->for($this->user)->create(['name' => 'Bitcoin', 'class' => AssetClass::Crypto, 'unit' => 'BTC']);
@@ -469,15 +471,55 @@ class TaxReportPageTest extends TestCase
             ->assertSeeInOrder(['Net capital gain', '$1,250.00']);
     }
 
-    public function test_choosing_every_class_again_clears_the_choice(): void
+    public function test_every_class_can_be_chosen_again_in_any_order(): void
     {
         $this->ledgerWithStamps();
         $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
 
         $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'other', 'metal', 'crypto']])->assertSessionHasNoErrors();
 
-        $this->assertNull($this->user->taxYears()->where('year', 2025)->sole()->asset_classes);
+        $this->assertSame(['crypto', 'metal', 'other'], $this->user->taxYears()->where('year', 2025)->sole()->asset_classes);
         $this->get('/tax-report/2025')->assertDontSee('left-out-notice')->assertSeeInOrder(['Net capital gain', '$1,900.00']);
+    }
+
+    public function test_a_report_is_of_crypto_only_until_its_classes_are_chosen(): void
+    {
+        config(['nugget.tax.default_asset_classes' => ['crypto']]);
+        $this->ledgerWithStamps();
+
+        // Crypto alone: $1,500 short-held and $3,000 long-held, less $2,000.
+        $this->get('/tax-report/2025')
+            ->assertOk()
+            ->assertSee('Metal and Other are left out of this report.')
+            ->assertSeeInOrder(['value="crypto" checked', 'value="metal">', 'value="other">'], false)
+            ->assertSee('A report takes in Crypto until you choose.')
+            ->assertSeeInOrder(['Net capital gain', '$1,250.00'])
+            ->assertSeeInOrder(['id="disposals-other"', 'This section is left out of the report.'], false);
+
+        // Saving the losses alone does not turn the default into a choice.
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '10']);
+        $this->assertNull($this->user->taxYears()->where('year', 2025)->sole()->asset_classes);
+
+        $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
+        $this->assertSame([AssetClass::Crypto], $report->classes);
+        $this->assertStringContainsString('Crypto (Metal and Other left out)', app(TaxReportPdf::class)->html($this->user, $report));
+    }
+
+    public function test_every_class_chosen_stays_chosen_whatever_the_default(): void
+    {
+        config(['nugget.tax.default_asset_classes' => ['crypto']]);
+        $this->ledgerWithStamps();
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto', 'metal', 'other']]);
+
+        $this->get('/tax-report/2025')->assertDontSee('left-out-notice')->assertSeeInOrder(['Net capital gain', '$1,900.00']);
+    }
+
+    public function test_the_default_is_crypto_only_as_configured(): void
+    {
+        $this->app['config']->set('nugget', require config_path('nugget.php'));
+
+        $this->assertSame([AssetClass::Crypto], TaxYear::defaultClasses());
     }
 
     public function test_a_report_needs_at_least_one_class_and_only_real_ones(): void

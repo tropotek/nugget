@@ -161,6 +161,7 @@
                             @enderror
                             <div class="form-text">
                                 The sales of a class left out are in neither the sections nor the net capital gain. Metal and Other make up "Other assets".
+                                A report takes in {{ collect(App\Models\TaxYear::defaultClasses())->map->label()->join(', ', ' and ') }} until you choose.
                             </div>
                         </fieldset>
 

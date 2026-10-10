@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * What a user has chosen for the tax report of one financial year: the
  * capital losses carried forward into it from earlier years, and the asset
  * classes it takes in. `year` is the year it ends in. A year with no row has
- * no losses and takes in every class.
+ * no losses and takes in the default classes
+ * (`nugget.tax.default_asset_classes`: crypto only).
  *
  * The owner is set through the user's relation, so it is not fillable.
  */
@@ -40,14 +41,25 @@ class TaxYear extends Model implements Owned
     }
 
     /**
-     * The asset classes a user's report for a year takes in: every class
-     * when none are chosen.
+     * The asset classes a user's report for a year takes in: the default
+     * ones when none are chosen.
      *
      * @return list<AssetClass>
      */
     public static function classesIn(User $user, FinancialYear $year): array
     {
-        return $user->taxYears()->where('year', $year->year)->first()?->classes() ?? AssetClass::cases();
+        return $user->taxYears()->where('year', $year->year)->first()?->classes() ?? self::defaultClasses();
+    }
+
+    /**
+     * The classes a report takes in until its user chooses: crypto only,
+     * unless the config says otherwise.
+     *
+     * @return list<AssetClass>
+     */
+    public static function defaultClasses(): array
+    {
+        return self::inOrder((array) config('nugget.tax.default_asset_classes'));
     }
 
     /**
@@ -57,11 +69,16 @@ class TaxYear extends Model implements Owned
      */
     public function classes(): array
     {
-        $chosen = $this->asset_classes;
+        return $this->asset_classes === null ? self::defaultClasses() : self::inOrder($this->asset_classes);
+    }
 
-        return $chosen === null
-            ? AssetClass::cases()
-            : array_values(array_filter(AssetClass::cases(), fn (AssetClass $class) => in_array($class->value, $chosen, true)));
+    /**
+     * @param  array<int, mixed>  $values  AssetClass values, in any order
+     * @return list<AssetClass>
+     */
+    private static function inOrder(array $values): array
+    {
+        return array_values(array_filter(AssetClass::cases(), fn (AssetClass $class) => in_array($class->value, $values, true)));
     }
 
     /**
