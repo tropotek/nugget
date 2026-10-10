@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 /**
@@ -66,6 +67,26 @@ class Transaction extends Model implements Owned
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    /**
+     * The parcels this acquired. A transfer in can bring several.
+     *
+     * @return HasMany<Parcel, $this>
+     */
+    public function parcels(): HasMany
+    {
+        return $this->hasMany(Parcel::class);
+    }
+
+    /**
+     * The parcels this used up, when it is a sale.
+     *
+     * @return HasMany<Disposal, $this>
+     */
+    public function disposals(): HasMany
+    {
+        return $this->hasMany(Disposal::class);
     }
 
     public function ownerId(): int

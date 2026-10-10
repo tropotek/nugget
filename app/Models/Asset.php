@@ -64,6 +64,14 @@ class Asset extends Model implements Owned
     }
 
     /**
+     * @return HasMany<Parcel, $this>
+     */
+    public function parcels(): HasMany
+    {
+        return $this->hasMany(Parcel::class);
+    }
+
+    /**
      * @return HasMany<Transaction, $this>
      */
     public function transactions(): HasMany

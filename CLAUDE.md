@@ -60,6 +60,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
 - Holdings are derived from the transaction ledger, never stored.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.
+- Parcels and disposals are worked out from the transactions. Only the parcel matcher writes them; nothing else creates, edits or deletes one.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
 - A page is a Blade view wrapped in `<x-layouts.app title="…">` (or `<x-layouts.guest>`). The title is both the heading and the browser title; an `actions` slot puts buttons beside the heading.
