@@ -17,6 +17,7 @@ class Importer
     public const PASSES = [
         Passes\UsersPass::class,
         Passes\ExchangesPass::class,
+        Passes\AssetsPass::class,
     ];
 
     /**

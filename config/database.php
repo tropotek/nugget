@@ -55,6 +55,8 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Its TIMESTAMP columns are read as UTC, whatever the server's own zone.
+            'timezone' => '+00:00',
         ],
 
         'sqlite' => [

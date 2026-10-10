@@ -90,6 +90,16 @@ class ImportContext
         DB::table('import_ids')->where('type', $type)->delete();
     }
 
+    /**
+     * Drop one Nugget row from the map, once it is cleared.
+     */
+    public function forgetId(string $type, int $newId): void
+    {
+        unset($this->ids[$type]);
+
+        DB::table('import_ids')->where('type', $type)->where('new_id', $newId)->delete();
+    }
+
     public function warn(string $message): void
     {
         $this->warnings[] = $message;
