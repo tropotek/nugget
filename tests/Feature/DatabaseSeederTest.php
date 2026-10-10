@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Exchange;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,6 +79,34 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(Role::Member, $mine->fresh()->role);
     }
 
+    public function test_the_admin_and_the_member_get_exchanges(): void
+    {
+        $this->runSeeder();
+
+        $admin = User::where('email', 'admin@example.com')->sole();
+        $exchanges = $admin->exchanges()->orderBy('label')->get();
+
+        $this->assertSame(['BTC Markets', 'Kraken'], $exchanges->pluck('label')->all());
+        $this->assertSame(['btcmarkets', 'kraken'], $exchanges->pluck('driver')->all());
+        $this->assertTrue($exchanges[0]->active);
+        $this->assertTrue($exchanges[0]->aud_balance->isPositive());
+        $this->assertNotNull($exchanges[0]->last_synced_at);
+        $this->assertFalse($exchanges[1]->active);
+        $this->assertNotNull($exchanges[1]->last_error);
+
+        $this->assertSame(1, User::where('email', 'member@example.com')->sole()->exchanges()->count());
+    }
+
+    public function test_seeding_again_adds_no_exchanges(): void
+    {
+        $this->runSeeder();
+        $count = Exchange::count();
+
+        $this->runSeeder();
+
+        $this->assertSame($count, Exchange::count());
+    }
+
     public function test_it_seeds_nothing_in_production(): void
     {
         $this->app['env'] = 'production';
@@ -85,5 +114,6 @@ class DatabaseSeederTest extends TestCase
         $this->runSeeder();
 
         $this->assertSame(0, User::count());
+        $this->assertSame(0, Exchange::count());
     }
 }
