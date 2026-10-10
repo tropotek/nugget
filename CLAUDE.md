@@ -56,7 +56,8 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 ## Conventions
 
-- Money and unit values are never floats. They are stored as fixed-scale strings and calculated with BCMath (task 20 adds the `Decimal` type).
+- Money and unit values are never floats. They are `App\Support\Decimal` objects, made with `Decimal::of('1.5')` from a string or an integer; a float throws.
+- A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
 - Holdings are derived from the transaction ledger, never stored.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
