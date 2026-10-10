@@ -12,5 +12,6 @@ import './transaction-form';
 import './parcel-picker';
 import './chart';
 import './notifications';
+import './tradingview';
 
 window.htmx = htmx;

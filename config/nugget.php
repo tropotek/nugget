@@ -90,6 +90,26 @@ return [
         'keep_read_days' => (int) env('NUGGET_NOTIFICATIONS_KEEP_READ_DAYS', 30),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | TradingView
+    |--------------------------------------------------------------------------
+    |
+    | The symbols the TradingView page offers after the user's own markets,
+    | and the name TradingView has for a timezone where it differs from
+    | PHP's: it knows the state capitals by a handful of names only.
+    |
+    */
+
+    'tradingview' => [
+        'watchlist' => ['BTCAUD', 'ADAAUD', 'ETHAUD', 'AUDUSD'],
+        'timezones' => [
+            'Australia/Melbourne' => 'Australia/Sydney',
+            'Australia/Canberra' => 'Australia/Sydney',
+            'Australia/Hobart' => 'Australia/Sydney',
+        ],
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

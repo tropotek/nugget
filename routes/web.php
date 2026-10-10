@@ -9,6 +9,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleParcelController;
+use App\Http\Controllers\TradingViewController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\ApplySettings;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('exchanges', ExchangeController::class)->except(['show']);
     Route::post('/exchanges/{exchange}/test', [ExchangeController::class, 'test'])->name('exchanges.test');
     Route::post('/exchanges/{exchange}/sync', [ExchangeController::class, 'sync'])->name('exchanges.sync');
+
+    // TradingView's embedded chart.
+    Route::get('/tradingview', TradingViewController::class)->name('tradingview');
 
     // The signed-in user's own. Opening one marks it read and goes where it leads.
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
