@@ -69,6 +69,8 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Which amounts a transaction type carries is on `TransactionType` (`hasPrice()`, `hasFee()`, `hasTotal()`); the rest are saved as zero. `Transaction::totalOf()` is the total when none is given.
 - A transaction from an exchange is locked (`$transaction->isLocked()`): only its notes change and it is never deleted by hand.
 - A date and time typed into a form is in the user's timezone: parse it with the user's `timezone` and store it in UTC.
+- A price (`App\Models\Price`) is the AUD bid and ask for one unit of an asset. An intraday row's `at` is the moment it was fetched. A day row is one per day in the owner's timezone and its `at` is that date at 00:00:00, made with `Price::day()`: a date, not a moment, so read it with `->at->toDateString()` and never through `LocalTime` or `<x-date>`.
+- An asset's latest price is its newest day row (`Price::latestPerAsset()`), not its newest intraday row: intraday rows are pruned.
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.

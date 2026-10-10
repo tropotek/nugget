@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\AssetClass;
 use App\Enums\PricedBy;
+use App\Enums\PriceResolution;
 use App\Enums\Role;
 use App\Enums\TransactionSource;
 use App\Enums\TransactionType;
@@ -11,11 +12,13 @@ use App\Models\Asset;
 use App\Models\Disposal;
 use App\Models\Exchange;
 use App\Models\Parcel;
+use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Decimal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -226,6 +229,69 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($counts, [Parcel::count(), Disposal::count()]);
     }
 
+    public function test_every_priced_asset_gets_a_price_for_each_day_since_its_first_transaction(): void
+    {
+        $this->travelTo('2026-10-10 03:07:00');
+        $this->runSeeder();
+
+        foreach (Asset::with('user')->get() as $asset) {
+            $days = $asset->prices()->where('resolution', PriceResolution::Day)->orderBy('at')->pluck('at');
+
+            if ($asset->pricedBy() === PricedBy::Nothing) {
+                $this->assertSame(0, $asset->prices()->count(), $asset->name);
+
+                continue;
+            }
+
+            $first = Price::day($asset->transactions()->oldest('occurred_at')->first()->occurred_at, $asset->user->timezone);
+
+            $this->assertSame($first->toDateString(), $days->first()->toDateString(), $asset->name);
+            // 2pm on 10 October in Melbourne.
+            $this->assertSame('2026-10-10', $days->last()->toDateString(), $asset->name);
+            $this->assertSame((int) $first->diffInDays($days->last()) + 1, $days->count(), "{$asset->name} has a gap in its days");
+        }
+
+        $this->assertTrue(Price::get()->every(fn (Price $price) => $price->bid->isPositive() && $price->ask->greaterThan($price->bid)));
+    }
+
+    public function test_the_last_48_hours_have_a_price_every_five_minutes_and_the_day_rows_close_on_them(): void
+    {
+        $this->travelTo('2026-10-10 03:07:00');
+        $this->runSeeder();
+
+        $bitcoin = User::where('email', 'admin@example.com')->sole()->assets()->where('name', 'Bitcoin')->sole();
+        $intraday = $bitcoin->prices()->where('resolution', PriceResolution::Intraday)->orderBy('at')->get();
+
+        $this->assertSame(48 * 12 + 1, $intraday->count());
+        $this->assertSame('2026-10-08 03:05:00', $intraday->first()->at->toDateTimeString());
+        $this->assertSame('2026-10-10 03:05:00', $intraday->last()->at->toDateTimeString());
+
+        // The latest price is the newest day row, and it is the last intraday price.
+        $latest = $bitcoin->prices()->latestPerAsset()->sole();
+        $this->assertSame('2026-10-10', $latest->at->toDateString());
+        $this->assertTrue($latest->bid->equals($intraday->last()->bid));
+
+        // 9 October in Melbourne ended at 13:00 UTC, so it closed on the 12:55 price.
+        $ninth = $bitcoin->prices()->daily('2026-10-09', '2026-10-09')->sole();
+        $this->assertTrue($ninth->bid->equals($intraday->firstWhere('at', Carbon::parse('2026-10-09 12:55:00'))->bid));
+    }
+
+    public function test_seeding_again_adds_no_prices_and_gives_the_same_ones(): void
+    {
+        $this->travelTo('2026-10-10 03:07:00');
+        $this->runSeeder();
+        $count = Price::count();
+        $bids = Price::orderBy('id')->limit(50)->pluck('bid')->map(fn ($bid) => (string) $bid)->all();
+
+        $this->runSeeder();
+        $this->assertSame($count, Price::count());
+
+        Price::query()->delete();
+        $this->runSeeder();
+        $this->assertSame($count, Price::count());
+        $this->assertSame($bids, Price::orderBy('id')->limit(50)->pluck('bid')->map(fn ($bid) => (string) $bid)->all());
+    }
+
     public function test_it_seeds_nothing_in_production(): void
     {
         $this->app['env'] = 'production';
@@ -236,5 +302,6 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(0, Exchange::count());
         $this->assertSame(0, Asset::count());
         $this->assertSame(0, Transaction::count());
+        $this->assertSame(0, Price::count());
     }
 }

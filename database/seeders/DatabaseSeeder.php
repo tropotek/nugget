@@ -2,13 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PriceResolution;
 use App\Enums\Role;
 use App\Enums\TransactionSource;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
+use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Decimal;
+use Carbon\CarbonImmutable;
 use Closure;
 use Database\Factories\AssetFactory;
 use Database\Factories\ExchangeFactory;
@@ -115,6 +119,81 @@ class DatabaseSeeder extends Seeder
         // Parcels and disposals are never seeded by hand: they are worked out from the ledger above.
         foreach ([$admin, $member] as $user) {
             $user->assets()->get()->each(fn (Asset $asset) => app(ParcelMatcher::class)->rematch($asset));
+        }
+
+        // What one unit sold for at the asset's first transaction, and sells for now.
+        $this->prices($bitcoin, '80000', '158000');
+        $this->prices($coldWallet, '152000', '158000');
+        $this->prices($cardano, '0.5', '0.72');
+        $this->prices($litecoin, '104', '171');
+        $this->prices($gold, '3620', '6310');
+        $this->prices($silver, '48.9', '54.6');
+        $this->prices($prospected, '127', '203');
+        $this->prices($membersBitcoin, '149000', '158000');
+    }
+
+    /**
+     * Give an asset a price history, unless it has one: a day row for each
+     * of its owner's days since its first transaction, and an intraday row
+     * every 5 minutes for the last 48 hours.
+     *
+     * The price drifts from the first figure to the second with a wobble of
+     * up to 2% a day and 0.3% within the two days. The wobble is worked out
+     * from the asset and the time, so it is the same on every run. A day
+     * that has intraday rows closes at the last of them.
+     */
+    private function prices(Asset $asset, string $from, string $to): void
+    {
+        $first = $asset->transactions()->min('occurred_at');
+
+        if ($asset->prices()->exists() || ! $first) {
+            return;
+        }
+
+        $timezone = $asset->user->timezone;
+        $now = CarbonImmutable::now('UTC');
+        $rows = [];
+
+        $row = function (CarbonImmutable $at, PriceResolution $resolution, Decimal $bid) use (&$rows, $asset, $now) {
+            $rows["{$resolution->value} {$at->toDateTimeString()}"] = [
+                'asset_id' => $asset->id,
+                'at' => $at->toDateTimeString(),
+                'bid' => $bid->toFixed(Decimal::PRICE_SCALE),
+                // A spread of 0.2%.
+                'ask' => $bid->mul('1.002')->toFixed(Decimal::PRICE_SCALE),
+                'resolution' => $resolution->value,
+                'created_at' => $now->toDateTimeString(),
+                'updated_at' => $now->toDateTimeString(),
+            ];
+        };
+
+        // The price moved by a whole number of hundredths of a percent, between -$range and $range.
+        $wobble = fn (Decimal $price, string $seed, int $range) => $price
+            ->mul(10000 + crc32("{$asset->name} {$seed}") % (2 * $range + 1) - $range)
+            ->div(10000, 6);
+
+        $start = Price::day(CarbonImmutable::parse($first, 'UTC'), $timezone);
+        $today = Price::day($now, $timezone);
+        $days = max(1, (int) $start->diffInDays($today));
+
+        for ($day = 0; $day <= $days; $day++) {
+            $drifted = Decimal::of($from)->add(Decimal::of($to)->sub($from)->mul($day)->div($days, 6));
+            $date = $start->addDays($day);
+
+            $row($date, PriceResolution::Day, $wobble($drifted, $date->toDateString(), 200));
+        }
+
+        $latest = $now->startOfMinute()->subMinutes($now->minute % 5);
+
+        for ($at = $latest->subHours(48); $at->lessThanOrEqualTo($latest); $at = $at->addMinutes(5)) {
+            $bid = $wobble(Decimal::of($to), $at->toDateTimeString(), 30);
+
+            $row($at, PriceResolution::Intraday, $bid);
+            $row(Price::day($at, $timezone), PriceResolution::Day, $bid);
+        }
+
+        foreach (array_chunk(array_values($rows), 500) as $chunk) {
+            Price::insert($chunk);
         }
     }
 
