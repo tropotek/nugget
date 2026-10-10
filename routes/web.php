@@ -9,6 +9,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleParcelController;
+use App\Http\Controllers\TaxReportController;
 use App\Http\Controllers\TradingViewController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\ApplySettings;
@@ -42,6 +43,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('exchanges', ExchangeController::class)->except(['show']);
     Route::post('/exchanges/{exchange}/test', [ExchangeController::class, 'test'])->name('exchanges.test');
     Route::post('/exchanges/{exchange}/sync', [ExchangeController::class, 'sync'])->name('exchanges.sync');
+
+    // The signed-in user's own capital gains report, for an open year.
+    Route::get('/tax-report', [TaxReportController::class, 'index'])->name('tax-report.index');
+    Route::get('/tax-report/{year}', [TaxReportController::class, 'show'])->whereNumber('year')->name('tax-report.show');
+    Route::put('/tax-report/{year}', [TaxReportController::class, 'update'])->whereNumber('year')->name('tax-report.update');
 
     // TradingView's embedded chart.
     Route::get('/tradingview', TradingViewController::class)->name('tradingview');

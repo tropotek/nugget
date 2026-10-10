@@ -129,6 +129,9 @@ class DatabaseSeeder extends Seeder
         // The exchange has 2 ADA the ledger does not: a staking reward nobody has entered yet.
         $this->mismatch($btcMarkets, $cardano, '2');
 
+        // A capital loss from before Nugget, carried into the first year it reports on.
+        $admin->taxYears()->firstOrCreate(['year' => 2025], ['losses_carried_forward' => '650.00']);
+
         // What one unit sold for at the asset's first transaction, and sells for now.
         $this->prices($bitcoin, '80000', '158000');
         $this->prices($coldWallet, '152000', '158000');

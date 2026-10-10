@@ -4,6 +4,7 @@ namespace App\Tax;
 
 use App\Enums\TaxSection;
 use App\Models\Disposal;
+use App\Models\TaxYear;
 use App\Models\User;
 use App\Support\Decimal;
 use App\Support\FinancialYear;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 class CgtCalculator
 {
     /**
-     * @param  Decimal|null  $carriedForward  losses brought in from earlier years
+     * @param  Decimal|null  $carriedForward  losses brought in from earlier years. Left out, it is what the user saved for the year
      */
     public function forYear(User $user, FinancialYear $year, ?Decimal $carriedForward = null): CgtReport
     {
@@ -45,6 +46,6 @@ class CgtCalculator
             $sections[] = CgtSection::of($section, $bySection[$section->value]);
         }
 
-        return new CgtReport($year, CgtSummary::of($sections, $carriedForward ?? Decimal::zero()), $bySection);
+        return new CgtReport($year, CgtSummary::of($sections, $carriedForward ?? TaxYear::lossesCarriedInto($user, $year)), $bySection);
     }
 }

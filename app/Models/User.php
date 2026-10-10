@@ -61,6 +61,16 @@ class User extends Authenticatable
         return $this->hasMany(Exchange::class);
     }
 
+    /**
+     * What the user has entered for each year's tax report.
+     *
+     * @return HasMany<TaxYear, $this>
+     */
+    public function taxYears(): HasMany
+    {
+        return $this->hasMany(TaxYear::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;
