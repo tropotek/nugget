@@ -5,6 +5,7 @@ namespace App\Exchanges;
 use App\Exchanges\Contracts\ChecksConnection;
 use App\Exchanges\Contracts\ListsMarkets;
 use App\Exchanges\Contracts\QuotesPrices;
+use App\Exchanges\Contracts\ReportsBalances;
 use App\Exchanges\Drivers\BtcMarkets;
 use App\Models\Exchange;
 use InvalidArgumentException;
@@ -28,6 +29,7 @@ class ExchangeDrivers
     public const CAPABILITIES = [
         QuotesPrices::class => 'Prices',
         ListsMarkets::class => 'Market list',
+        ReportsBalances::class => 'Balances',
         ChecksConnection::class => 'Connection test',
     ];
 

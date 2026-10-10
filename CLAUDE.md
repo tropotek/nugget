@@ -22,6 +22,7 @@ docker compose exec app php artisan nugget:rematch         # rebuild parcels and
 docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
 docker compose exec app php artisan nugget:fetch-prices    # fetch and store every active asset's price now (--asset=ID)
 docker compose exec app php artisan nugget:prune-prices    # delete intraday prices older than 48 hours
+docker compose exec app php artisan nugget:sync-exchanges  # sync every active exchange now (--exchange=ID)
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -84,11 +85,13 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - An asset's latest price is its newest day row (`Price::latestPerAsset()`), not its newest intraday row: intraday rows are pruned.
 - Read an asset's current price with `App\Prices\PriceSources::quote($asset)`: an `App\Prices\Quote` (bid and ask) or null. A price source never throws: it logs a warning and returns null.
 - Each exchange has Nugget's own driver in `App\Exchanges\Drivers`, written against that exchange's API with Laravel's HTTP client. There is no ccxt and no other exchange library. Get an exchange's driver with `App\Exchanges\ExchangeDrivers::for($exchange)`.
-- What an exchange can do is said by the interfaces in `App\Exchanges\Contracts` that its driver implements (`QuotesPrices`, `ListsMarkets` and `ChecksConnection` so far). Add each new one to `ExchangeDrivers::CAPABILITIES` with a label, which the exchange page lists. Check with `instanceof` before a call: an exchange that lacks one is a normal case, not an error.
+- What an exchange can do is said by the interfaces in `App\Exchanges\Contracts` that its driver implements (`QuotesPrices`, `ListsMarkets`, `ChecksConnection` and `ReportsBalances` so far). Add each new one to `ExchangeDrivers::CAPABILITIES` with a label, which the exchange page lists. Check with `instanceof` before a call: an exchange that lacks one is a normal case, not an error.
 - To support another exchange, write its driver and add it to `ExchangeDrivers::DRIVERS`. To use a new kind of call, add an interface to `Contracts` and implement it on the drivers that can.
 - Read an exchange's markets through `App\Exchanges\Markets` (`for`, `inAud`, `prices`), not from the driver: it caches the list by driver for a day and never throws. An empty list means it is not known, so nothing is refused because of it. Cache plain arrays, not objects: `cache.serializable_classes` is off.
 - An exchange's key and secret are never put on a page or in the session, in whole or in part. Its form fields are empty on an edit and a blank one keeps what is saved. Its driver is fixed once it is added, and it is deleted only when no asset is priced by it.
 - A private call to BTC Markets goes through `BtcMarkets::signed()`. Say why a call to an exchange failed with `App\Exchanges\Failure::reason($e)`, which never includes the request.
+- Sync an exchange with `App\Exchanges\Sync\ExchangeSync::run($exchange)`, which runs the steps in `App\Exchanges\Sync` and never throws: it writes the exchange's `last_synced_at`, `last_error` and `last_sync_note` (the steps its driver could not do). A step takes the exchange and its driver, returns a note when it is skipped and throws when it fails.
+- What an exchange said the account held at its last sync is in `exchange_balances` (`$exchange->balances`), AUD included, with no row for a symbol not held. Only `SyncBalances` writes them. They are the exchange's figures: a sync never changes the ledger to match.
 - A market id is the exchange's own (`BTC-AUD` on BTC Markets). A feed symbol is Swissquote's (`XAU/AUD`).
 - No test touches the network, and `Tests\TestCase` makes a call that is not faked throw: fake every outside call with `Http::fake()` and a recorded response from `tests/Fixtures/`. Record a new fixture from the real API, and only from public or made-up data.
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.

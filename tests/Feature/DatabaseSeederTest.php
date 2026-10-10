@@ -11,6 +11,7 @@ use App\Enums\TransactionType;
 use App\Models\Asset;
 use App\Models\Disposal;
 use App\Models\Exchange;
+use App\Models\ExchangeBalance;
 use App\Models\Parcel;
 use App\Models\Price;
 use App\Models\Transaction;
@@ -107,6 +108,23 @@ class DatabaseSeederTest extends TestCase
         $this->assertNotNull($exchanges[1]->last_error);
 
         $this->assertSame(1, User::where('email', 'member@example.com')->sole()->exchanges()->count());
+    }
+
+    public function test_the_synced_exchanges_get_balances_that_agree_with_the_ledger(): void
+    {
+        $this->runSeeder();
+
+        $exchange = User::where('email', 'admin@example.com')->sole()->exchanges()->where('label', 'BTC Markets')->sole();
+        $balances = $exchange->balances()->pluck('units', 'symbol');
+
+        $this->assertEqualsCanonicalizing(['AUD', 'BTC', 'ADA'], $balances->keys()->all());
+        $this->assertTrue($balances['AUD']->equals($exchange->aud_balance));
+        $this->assertSame('0.05', (string) $balances['BTC']);
+
+        $count = ExchangeBalance::count();
+        $this->runSeeder();
+
+        $this->assertSame($count, ExchangeBalance::count());
     }
 
     public function test_seeding_again_adds_no_exchanges(): void

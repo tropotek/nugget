@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exchanges\ExchangeDrivers;
 use App\Models\Asset;
 use App\Models\Exchange;
+use App\Models\ExchangeBalance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -198,7 +199,31 @@ class ExchangeManagerTest extends TestCase
         $exchange->forceFill(['last_synced_at' => '2025-06-30 02:15:00', 'last_error' => 'Rate limited'])->save();
 
         $this->get(route('exchanges.edit', $exchange))
-            ->assertSeeInOrder(['Nugget can read', 'Prices', 'Market list', 'Connection test', 'Last sync', '30 Jun 2025, 12:15pm', 'Last error', 'Rate limited', 'Test connection']);
+            ->assertSeeInOrder(['Nugget can read', 'Prices', 'Market list', 'Balances', 'Connection test', 'Last sync', '30 Jun 2025, 12:15pm', 'Last error', 'Rate limited', 'Test connection']);
+    }
+
+    public function test_the_edit_page_lists_the_balances_of_the_last_sync(): void
+    {
+        $exchange = $this->exchange();
+        $exchange->forceFill(['last_synced_at' => '2025-06-30 02:15:00', 'last_sync_note' => 'Trades were not read.'])->save();
+        ExchangeBalance::factory()->for($exchange)->create(['symbol' => 'BTC', 'units' => '0.05', 'available' => '0.03']);
+        ExchangeBalance::factory()->for($exchange)->of('AUD', '1520.4567')->create();
+        ExchangeBalance::factory()->of('DOGE', '777')->create();
+
+        $this->get(route('exchanges.edit', $exchange))
+            ->assertSeeInOrder(['Balances', 'Skipped', 'Trades were not read.', 'id="exchange-balances"', 'AUD', '1520.4567', '1520.4567', 'BTC', '0.05', '0.03'], false)
+            ->assertDontSee('DOGE');
+    }
+
+    public function test_the_edit_page_says_when_there_are_no_balances(): void
+    {
+        $exchange = $this->exchange();
+
+        $this->get(route('exchanges.edit', $exchange))->assertSee('Not synced yet.')->assertDontSee('Skipped');
+
+        $exchange->forceFill(['last_synced_at' => now()])->save();
+
+        $this->get(route('exchanges.edit', $exchange))->assertSee('The exchange held nothing.');
     }
 
     public function test_a_blank_key_and_secret_keep_the_saved_ones(): void

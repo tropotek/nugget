@@ -2,13 +2,16 @@
 
 namespace App\Exchanges\Drivers;
 
+use App\Exchanges\Balance;
 use App\Exchanges\Contracts\ChecksConnection;
 use App\Exchanges\Contracts\ListsMarkets;
 use App\Exchanges\Contracts\QuotesPrices;
+use App\Exchanges\Contracts\ReportsBalances;
 use App\Exchanges\ExchangeDriver;
 use App\Exchanges\Market;
 use App\Models\Exchange;
 use App\Prices\Quote;
+use App\Support\Decimal;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -18,7 +21,7 @@ use UnexpectedValueException;
  * BTC Markets, by its v3 REST API (https://docs.btcmarkets.net). Amounts
  * come as strings, so nothing passes through a float.
  */
-class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, QuotesPrices
+class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, QuotesPrices, ReportsBalances
 {
     /** @var array<string, Quote> the tickers read so far, by market */
     private array $quotes = [];
@@ -66,7 +69,34 @@ class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, Quot
      */
     public function checkConnection(): void
     {
-        $this->signed('GET', 'accounts/me/balances')->get('accounts/me/balances')->throw();
+        $this->balances();
+    }
+
+    /**
+     * BTC Markets lists every coin it trades, most of them at zero. A
+     * balance has more places than Nugget keeps and is rounded to them.
+     */
+    public function balances(): array
+    {
+        $balances = $this->signed('GET', 'accounts/me/balances')->get('accounts/me/balances')->throw()->json();
+
+        if (! is_array($balances) || ! array_is_list($balances)) {
+            throw new UnexpectedValueException('BTC Markets did not answer with a list of balances.');
+        }
+
+        return array_map(function (mixed $balance) {
+            if (! is_array($balance) || ! is_string($balance['assetName'] ?? null) || ! is_string($balance['balance'] ?? null)) {
+                throw new UnexpectedValueException('BTC Markets listed a balance with no asset or no amount.');
+            }
+
+            $units = Decimal::of($balance['balance'])->round(Decimal::UNITS_SCALE);
+
+            return new Balance(
+                $balance['assetName'],
+                $units,
+                is_string($balance['available'] ?? null) ? Decimal::of($balance['available'])->round(Decimal::UNITS_SCALE) : $units,
+            );
+        }, $balances);
     }
 
     private function ticker(string $market): Quote

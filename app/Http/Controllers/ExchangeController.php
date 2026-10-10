@@ -108,6 +108,7 @@ class ExchangeController extends Controller
         return view('exchanges.form', [
             'exchange' => $exchange,
             'drivers' => $this->drivers,
+            'balances' => $exchange->exists ? $exchange->balances()->orderBy('symbol')->get() : collect(),
             'usedByAssets' => $exchange->exists && $exchange->assets()->exists(),
         ]);
     }

@@ -23,7 +23,7 @@ class ExchangeSchemaTest extends TestCase
         $this->assertEqualsCanonicalizing(
             [
                 'id', 'user_id', 'driver', 'label', 'api_key', 'secret', 'aud_balance', 'active',
-                'last_synced_at', 'last_error', 'created_at', 'updated_at',
+                'last_synced_at', 'last_error', 'last_sync_note', 'created_at', 'updated_at',
             ],
             Schema::getColumnListing('exchanges'),
         );

@@ -1,7 +1,7 @@
 {{--
     The add and edit form. The saved key and secret are never put on the page: on an edit the
     fields are empty, and a blank one keeps what is saved.
-    $drivers: App\Exchanges\ExchangeDrivers. $usedByAssets: an asset is priced by it, so it cannot be deleted.
+    $drivers: App\Exchanges\ExchangeDrivers. $balances: what the exchange held at its last sync. $usedByAssets: an asset is priced by it, so it cannot be deleted.
 --}}
 @php
     $names = $drivers->names();
@@ -134,6 +134,10 @@
                             </dd>
                             <dt class="col-5">Last error</dt>
                             <dd class="col-7 {{ $exchange->last_error ? 'text-danger' : 'text-muted' }}">{{ $exchange->last_error ?? 'None' }}</dd>
+                            @if ($exchange->last_sync_note)
+                                <dt class="col-5">Skipped</dt>
+                                <dd class="col-7">{{ $exchange->last_sync_note }}</dd>
+                            @endif
                         </dl>
 
                         @if ($drivers->can($exchange->driver, App\Exchanges\Contracts\ChecksConnection::class))
@@ -143,6 +147,37 @@
                                 <div class="form-text">Tries the saved key and secret. Save a change to them first.</div>
                             </form>
                         @endif
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="header-title mb-3">Balances at the last sync</h4>
+                        <div class="table-responsive">
+                            <table class="table table-centered mb-0" id="exchange-balances">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th class="text-end">Balance</th>
+                                        <th class="text-end">Available</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($balances as $balance)
+                                        <tr>
+                                            <td>{{ $balance->symbol }}</td>
+                                            <td class="text-end">{{ $balance->units }}</td>
+                                            <td class="text-end">{{ $balance->available }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="3" class="text-muted">{{ $exchange->last_synced_at ? 'The exchange held nothing.' : 'Not synced yet.' }}</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text mt-2">What the exchange said the account held. The ledger is not changed to match it.</div>
                     </div>
                 </div>
             </div>

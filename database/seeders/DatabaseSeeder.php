@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\PriceResolution;
 use App\Enums\Role;
 use App\Enums\TransactionSource;
+use App\Ledger\Holdings;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
@@ -120,6 +121,10 @@ class DatabaseSeeder extends Seeder
             $user->assets()->get()->each(fn (Asset $asset) => app(ParcelMatcher::class)->rematch($asset));
         }
 
+        // What each synced exchange last said the account held: the ledger's own figures, and the AUD.
+        $this->balances($btcMarkets, [$bitcoin, $cardano, $litecoin]);
+        $this->balances($membersExchange, [$membersBitcoin]);
+
         // What one unit sold for at the asset's first transaction, and sells for now.
         $this->prices($bitcoin, '80000', '158000');
         $this->prices($coldWallet, '152000', '158000');
@@ -230,6 +235,31 @@ class DatabaseSeeder extends Seeder
     {
         return $user->assets()->where('name', $name)->first()
             ?? $states(Asset::factory())->for($user)->create(['name' => $name]);
+    }
+
+    /**
+     * Give an exchange the balances of a sync, unless it has some: its AUD
+     * balance, and what is held of each of these assets.
+     *
+     * @param  list<Asset>  $assets
+     */
+    private function balances(Exchange $exchange, array $assets): void
+    {
+        if ($exchange->balances()->exists()) {
+            return;
+        }
+
+        $held = ['AUD' => $exchange->aud_balance];
+
+        foreach ($assets as $asset) {
+            $held[$asset->symbol] = app(Holdings::class)->forAsset($asset)->units;
+        }
+
+        foreach ($held as $symbol => $units) {
+            if (! $units->isZero()) {
+                $exchange->balances()->create(['symbol' => $symbol, 'units' => $units, 'available' => $units]);
+            }
+        }
     }
 
     /**
