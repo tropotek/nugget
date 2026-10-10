@@ -18,6 +18,7 @@ class Importer
         Passes\UsersPass::class,
         Passes\ExchangesPass::class,
         Passes\AssetsPass::class,
+        Passes\AssetLogPass::class,
     ];
 
     /**
