@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Brings one exchange up to date, a step at a time: its balances, then its
- * trades.
+ * Brings one exchange up to date, a step at a time: its balances, its trades,
+ * then a comparison of the two with the ledger.
  *
  * It never throws. A sync that works sets the exchange's `last_synced_at`,
  * clears its `last_error` and sets `last_sync_note` to the steps its driver
@@ -24,6 +24,7 @@ class ExchangeSync
         private readonly ExchangeDrivers $drivers,
         private readonly SyncBalances $balances,
         private readonly SyncTrades $trades,
+        private readonly ReconcileBalances $reconcile,
     ) {}
 
     /**
@@ -37,6 +38,7 @@ class ExchangeSync
             $notes = array_filter([
                 $this->balances->run($exchange, $driver),
                 $this->trades->run($exchange, $driver),
+                $this->reconcile->run($exchange, $driver),
             ]);
         } catch (Throwable $e) {
             Log::warning("The sync of exchange {$exchange->id} ({$exchange->label}) failed: {$e->getMessage()}");

@@ -1,7 +1,7 @@
 {{--
     The add and edit form. The saved key and secret are never put on the page: on an edit the
     fields are empty, and a blank one keeps what is saved.
-    $drivers: App\Exchanges\ExchangeDrivers. $balances: what the exchange held at its last sync. $usedByAssets: an asset is priced by it, so it cannot be deleted.
+    $drivers: App\Exchanges\ExchangeDrivers. $balances: what the exchange held at its last sync. $mismatches: the BalanceMismatch notifications it left. $usedByAssets: an asset is priced by it, so it cannot be deleted.
 --}}
 @php
     $names = $drivers->names();
@@ -110,7 +110,9 @@
         </div>
 
         @if ($exchange->exists)
-            @php($capabilities = $drivers->capabilities($exchange->driver))
+            @php
+                $capabilities = $drivers->capabilities($exchange->driver);
+            @endphp
             <div class="col-lg-6">
                 <div class="card" id="exchange-connection">
                     <div class="card-body">
@@ -180,6 +182,46 @@
                         <div class="form-text mt-2">What the exchange said the account held. The ledger is not changed to match it.</div>
                     </div>
                 </div>
+
+                @if ($mismatches->isNotEmpty())
+                    <div class="card border-warning" id="balance-mismatches">
+                        <div class="card-body">
+                            <h4 class="header-title mb-3">Not what the ledger says</h4>
+                            <div class="table-responsive">
+                                <table class="table table-centered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th class="text-end">Ledger</th>
+                                            <th class="text-end">Exchange</th>
+                                            <th class="text-end">Difference</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($mismatches as $mismatch)
+                                            @php
+                                                $data = $mismatch->data;
+                                                $links = App\Notifications\BalanceMismatch::links($data);
+                                            @endphp
+                                            <tr>
+                                                <td><a href="{{ route('assets.show', $data['asset_id']) }}">{{ $data['asset'] }}</a></td>
+                                                <td class="text-end">{{ $data['ledger'] }}</td>
+                                                <td class="text-end">{{ $data['on_exchange'] }}</td>
+                                                <td class="text-end text-nowrap">{{ $data['difference'] }} {{ $data['unit'] }}</td>
+                                                <td class="text-end text-nowrap">
+                                                    <a href="{{ $links['transfer'] }}" class="btn btn-sm btn-light">{{ $links['transferLabel'] }}</a>
+                                                    <a href="{{ $links['adjust'] }}" class="btn btn-sm btn-light">Adjust</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-text mt-2">Found at the last sync. Enter a transfer if the units came from or went to another holding, or an adjustment to correct the ledger.</div>
+                        </div>
+                    </div>
+                @endif
             </div>
         @endif
     </div>

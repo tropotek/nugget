@@ -12,6 +12,7 @@ use App\Models\Exchange;
 use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\BalanceMismatch;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -124,6 +125,9 @@ class DatabaseSeeder extends Seeder
         // What each synced exchange last said the account held: the ledger's own figures, and the AUD.
         $this->balances($btcMarkets, [$bitcoin, $cardano, $litecoin]);
         $this->balances($membersExchange, [$membersBitcoin]);
+
+        // The exchange has 2 ADA the ledger does not: a staking reward nobody has entered yet.
+        $this->mismatch($btcMarkets, $cardano, '2');
 
         // What one unit sold for at the asset's first transaction, and sells for now.
         $this->prices($bitcoin, '80000', '158000');
@@ -260,6 +264,26 @@ class DatabaseSeeder extends Seeder
                 $exchange->balances()->create(['symbol' => $symbol, 'units' => $units, 'available' => $units]);
             }
         }
+    }
+
+    /**
+     * Put an exchange's balance of an asset this many units above the ledger
+     * and tell its owner, unless they have a balance mismatch already.
+     */
+    private function mismatch(Exchange $exchange, Asset $asset, string $extra): void
+    {
+        $owner = $exchange->user;
+        $balance = $exchange->balances()->where('symbol', $asset->symbol)->first();
+
+        if (! $balance || $owner->notifications()->where('type', BalanceMismatch::class)->exists()) {
+            return;
+        }
+
+        $holding = app(Holdings::class)->forAsset($asset);
+        $onExchange = $holding->units->add($extra);
+
+        $balance->update(['units' => $onExchange, 'available' => $onExchange]);
+        $owner->notify(new BalanceMismatch($exchange, $holding, $onExchange));
     }
 
     /**

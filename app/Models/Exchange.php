@@ -7,6 +7,7 @@ use App\Models\Contracts\Owned;
 use Database\Factories\ExchangeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,6 +65,19 @@ class Exchange extends Model implements Owned
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
+    }
+
+    /**
+     * The assets held on the exchange, by market id: the ones its trades are
+     * stored on and its balances compared with. Where two assets share a
+     * market, such as a holding and a cold wallet priced by the same one, it
+     * is the one added first.
+     *
+     * @return Collection<string, Asset>
+     */
+    public function tradedAssets(): Collection
+    {
+        return $this->assets()->orderBy('id')->get()->unique('market_id')->keyBy('market_id');
     }
 
     /**

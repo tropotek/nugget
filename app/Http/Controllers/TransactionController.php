@@ -43,14 +43,24 @@ class TransactionController extends Controller
     }
 
     /**
-     * `?asset=ID` chooses the asset to begin with.
+     * `?asset=ID` chooses the asset to begin with, and `?type=adjust&units=-0.5`
+     * the type and the units: a balance mismatch links here that way. Anything
+     * that is not a type or a plain number of units is passed over.
      */
     public function create(Request $request): View
     {
         Gate::authorize('create', Transaction::class);
 
-        $transaction = new Transaction(['type' => TransactionType::Buy, 'occurred_at' => now()]);
+        $type = $request->query('type');
+        $type = (is_string($type) ? TransactionType::tryFrom($type) : null) ?? TransactionType::Buy;
+        $units = $request->query('units');
+
+        $transaction = new Transaction(['type' => $type, 'occurred_at' => now()]);
         $transaction->asset_id = $request->user()->assets()->whereKey($request->integer('asset'))->value('id');
+
+        if (is_string($units) && preg_match('/^'.($type === TransactionType::Adjust ? '-?' : '').'\d{1,20}(\.\d{1,8})?$/D', $units)) {
+            $transaction->units = $units;
+        }
 
         return $this->form($request, $transaction);
     }

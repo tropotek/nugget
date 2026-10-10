@@ -7,8 +7,10 @@ use App\Exchanges\ExchangeDrivers;
 use App\Exchanges\Failure;
 use App\Http\Requests\ExchangeRequest;
 use App\Models\Exchange;
+use App\Notifications\BalanceMismatch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Throwable;
@@ -109,6 +111,11 @@ class ExchangeController extends Controller
             'exchange' => $exchange,
             'drivers' => $this->drivers,
             'balances' => $exchange->exists ? $exchange->balances()->orderBy('symbol')->get() : collect(),
+            // Where the last sync found the exchange and the ledger apart.
+            'mismatches' => $exchange->exists
+                ? $exchange->user->notifications()->where('type', BalanceMismatch::class)->where('data->exchange_id', $exchange->id)->get()
+                    ->sortBy(fn (DatabaseNotification $notification) => $notification->data['asset'])->values()
+                : collect(),
             'usedByAssets' => $exchange->exists && $exchange->assets()->exists(),
         ]);
     }

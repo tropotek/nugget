@@ -62,6 +62,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Exchange sync
+    |--------------------------------------------------------------------------
+    |
+    | An exchange's balance of an asset and the ledger's may differ by this
+    | many units before the owner is told. It allows for rounding dust.
+    |
+    */
+
+    'sync' => [
+        'balance_tolerance' => env('NUGGET_SYNC_BALANCE_TOLERANCE', '0.000001'),
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

@@ -16,6 +16,7 @@ use App\Models\Parcel;
 use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\BalanceMismatch;
 use App\Support\Decimal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,6 +126,20 @@ class DatabaseSeederTest extends TestCase
         $this->runSeeder();
 
         $this->assertSame($count, ExchangeBalance::count());
+    }
+
+    public function test_the_admin_is_told_of_a_balance_that_differs_from_the_ledger(): void
+    {
+        $this->runSeeder();
+        $this->runSeeder();
+
+        $admin = User::where('email', 'admin@example.com')->sole();
+        $mismatch = $admin->notifications()->where('type', BalanceMismatch::class)->sole();
+
+        $this->assertSame(['Cardano', '3018', '3020', '2'], [
+            $mismatch->data['asset'], $mismatch->data['ledger'], $mismatch->data['on_exchange'], $mismatch->data['difference'],
+        ]);
+        $this->assertSame('3020', (string) ExchangeBalance::where('exchange_id', $mismatch->data['exchange_id'])->where('symbol', 'ADA')->sole()->units);
     }
 
     public function test_seeding_again_adds_no_exchanges(): void

@@ -47,8 +47,7 @@ class SyncTrades
             return 'Trades were not read: '.$driver::label().' has no call for them.';
         }
 
-        // Where two assets share a market, its trades go to the one added first.
-        $assets = $exchange->assets()->orderBy('id')->get()->unique('market_id')->keyBy('market_id');
+        $assets = $exchange->tradedAssets();
         $passedOver = [];
 
         for ($page = 1; $page <= self::MAX_PAGES; $page++) {
