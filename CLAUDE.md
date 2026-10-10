@@ -40,7 +40,7 @@ The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket
 
 The containers load `.env` as real environment variables, so a change to `.env` needs `docker compose up -d` to recreate them, and `phpunit.xml` forces its test settings with `<server force="true">`.
 
-`composer test` clears the config cache and runs the suite. Tests use PHPUnit (not Pest) against an in-memory SQLite database.
+`composer test` clears the config cache and runs the suite. `phpunit.xml` raises `memory_limit` to 512M for it, because dompdf loads a whole font on top of what the suite holds. Tests use PHPUnit (not Pest) against an in-memory SQLite database.
 
 ## Layout
 
@@ -107,6 +107,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.
 - The stored parcels show what is left now. What a sale could use at its own moment comes from `ParcelMatcher::openBefore($sale)`, which replays the ledger up to the sale and rolls back: the parcels it returns are not rows, so read them and never save them. `App\Ledger\ParcelChoice::forSale()` turns them into the lines of the parcel picker.
 - A user's capital gains for a year come from `App\Tax\CgtCalculator::forYear($user, $year, $carriedForward)`: an `App\Tax\CgtReport` with the disposals by `App\Enums\TaxSection` (crypto, other) and the `CgtSummary`. Every screen, file and API that shows the report reads this and works nothing out itself. Left without a carried-forward figure, it uses the one the user saved for the year (`App\Models\TaxYear`). The arithmetic is in `CgtSummary::of()`, which has no database.
+- A PDF is made with dompdf from a Blade view of plain HTML with its own stylesheet (`App\Tax\TaxReportPdf`, `tax-report/pdf.blade.php`): no remote files, no script. Pass the user to `LocalTime::of()` there rather than relying on who is signed in.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
 - A page is a Blade view wrapped in `<x-layouts.app title="…">` (or `<x-layouts.guest>`). The title is both the heading and the browser title; an `actions` slot puts buttons beside the heading.

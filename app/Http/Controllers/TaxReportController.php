@@ -9,8 +9,10 @@ use App\Rules\Amount;
 use App\Support\Decimal;
 use App\Support\FinancialYear;
 use App\Tax\CgtCalculator;
+use App\Tax\TaxReportPdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -54,6 +56,23 @@ class TaxReportController extends Controller
             // What the year before leaves to carry forward, as a prompt for the field. Nothing is filled in.
             'broughtForward' => $this->isOpen($year - 1) ? $calculator->forYear($user, $before)->summary->lossCarriedForward : null,
             'before' => $before,
+        ]);
+    }
+
+    /**
+     * The same report as a PDF to keep or pass on.
+     */
+    public function pdf(Request $request, int $year, CgtCalculator $calculator, TaxReportPdf $pdf): RedirectResponse|Response
+    {
+        if ($refused = $this->refuse($year)) {
+            return $refused;
+        }
+
+        $report = $calculator->forYear($request->user(), new FinancialYear($year));
+
+        return response($pdf->pdf($request->user(), $report), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.TaxReportPdf::filename($report).'"',
         ]);
     }
 

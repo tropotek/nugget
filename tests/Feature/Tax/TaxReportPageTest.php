@@ -9,6 +9,9 @@ use App\Models\Asset;
 use App\Models\TaxYear;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\FinancialYear;
+use App\Tax\CgtCalculator;
+use App\Tax\TaxReportPdf;
 use Database\Factories\TransactionFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -311,5 +314,96 @@ class TaxReportPageTest extends TestCase
         $this->ledger();
 
         $this->get('/tax-report/2025')->assertSee('A working paper for you and your accountant, not tax advice.');
+    }
+
+    // The PDF
+
+    public function test_the_report_downloads_as_a_pdf_with_a_page_for_the_summary_and_each_section(): void
+    {
+        $this->ledger();
+
+        $this->get('/tax-report/2025')->assertSee('href="'.route('tax-report.pdf', 2025).'"', false);
+
+        $response = $this->get('/tax-report/2025/pdf')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('Content-Disposition', 'attachment; filename="nugget-capital-gains-2024-25.pdf"');
+
+        $pdf = $response->getContent();
+
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        $this->assertSame(3, preg_match_all('#/Type\s*/Page\b(?!s)#', $pdf));
+    }
+
+    public function test_the_pdf_prints_the_same_report_with_who_when_and_what_it_is(): void
+    {
+        $this->ledger();
+        $this->user->update(['name' => 'Pat Example', 'email' => 'pat@example.com']);
+        $this->user->taxYears()->create(['year' => 2025, 'losses_carried_forward' => '1000.50']);
+        $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
+
+        $html = app(TaxReportPdf::class)->html($this->user, $report);
+
+        foreach ([
+            'Capital gains report 2024–25',
+            'Pat Example (pat@example.com)',
+            '1 July 2024 to 30 June 2025',
+            // Midday on 1 August 2025 in Melbourne.
+            '1 Aug 2025, 12:00pm (Australia/Melbourne)',
+            'A working paper, not tax advice.',
+            'Losses carried forward from earlier years',
+            '$1,000.50',
+            '$1,199.75',
+            'Crypto: disposals in 2024–25',
+            'Other assets: disposals in 2024–25',
+            '10 Jan 2023',
+            '-$2,000.00',
+            'Over 12 months',
+            '12 months or less',
+            'class="section"',
+        ] as $expected) {
+            $this->assertStringContainsString($expected, $html);
+        }
+
+        $this->assertStringNotContainsString('Estimated', $html);
+        $this->assertStringNotContainsString('<script', $html);
+        $this->assertStringNotContainsString('http', $html);
+    }
+
+    public function test_the_pdf_marks_and_counts_the_estimated_disposals(): void
+    {
+        $this->add($this->bitcoin, '2024-08-01', Transaction::factory()->buy('1', '5000')->estimated());
+        $this->add($this->bitcoin, '2024-11-01', Transaction::factory()->sell('1', '6000'));
+        $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
+
+        $html = app(TaxReportPdf::class)->html($this->user, $report);
+
+        $this->assertStringContainsString('1 disposal used a parcel with an estimated cost', $html);
+        $this->assertStringContainsString('12 months or less · Estimated', $html);
+        $this->assertStringContainsString('<tr class="estimated">', $html);
+        $this->assertStringContainsString('Nothing was sold in this section in 2024–25.', $html);
+    }
+
+    public function test_a_closed_year_or_a_guest_gets_no_pdf(): void
+    {
+        $this->ledger();
+
+        $this->get('/tax-report/2024/pdf')->assertRedirect(route('tax-report.index'));
+        $this->get('/tax-report/1999/pdf')->assertNotFound();
+
+        auth()->logout();
+
+        $this->get('/tax-report/2025/pdf')->assertRedirect(route('login'));
+    }
+
+    public function test_the_pdf_is_the_users_own(): void
+    {
+        $this->ledger();
+        $theirs = Asset::factory()->create(['name' => 'Their coin']);
+        $this->add($theirs, '2024-08-01', Transaction::factory()->buy('1', '100'));
+        $this->add($theirs, '2024-11-01', Transaction::factory()->sell('1', '99999'));
+        $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
+
+        $this->assertStringNotContainsString('Their coin', app(TaxReportPdf::class)->html($this->user, $report));
     }
 }

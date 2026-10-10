@@ -12,6 +12,7 @@
 
 <x-layouts.app :title="'Tax report '.$year->label()">
     <x-slot:actions>
+        <a href="{{ route('tax-report.pdf', $year->year) }}" class="btn btn-light"><i class="ri-file-pdf-line me-1"></i>PDF</a>
         <div class="btn-group" role="group" aria-label="Financial year">
             @foreach ($years as $choice)
                 <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['btn', 'btn-primary' => $choice->year->year === $year->year, 'btn-light' => $choice->year->year !== $year->year])>{{ $choice->year->label() }}</a>

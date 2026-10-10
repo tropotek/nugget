@@ -18,6 +18,8 @@
         </include>
     </source>
     <php>
+        <!-- dompdf reads a whole font to print the tax report, on top of what the suite already holds. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
