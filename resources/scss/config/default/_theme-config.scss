@@ -1,0 +1,170 @@
+// Variables
+//
+// custom-variables
+//
+
+
+// ===================================================== //
+// =========== Light Mode Components Shadow ===========  //
+// ===================================================== //
+
+:root, [data-bs-theme="light"] {
+
+  // Card Border
+  --#{$prefix}theme-border-width:      1px;
+  --#{$prefix}theme-card-border-color:  #e7eaed;
+}
+
+
+
+// ===================================================== //
+// ================= Dark Mode Color ==================  //
+// ===================================================== //
+
+html[data-bs-theme="dark"] {
+
+    $gray-100: #323a46;
+    $gray-200: #36404a;
+    $gray-300: #424e5a;
+    $gray-400: #5d7186;
+    $gray-500: #8c98a5;
+    $gray-600: #cedeef;
+    $gray-700: #dee2e6;
+    $gray-800: #f7f7f7;
+    $gray-900: #f3f7f9;
+
+    $grays: (
+        "100": $gray-100,
+        "200": $gray-200,
+        "300": $gray-300,
+        "400": $gray-400,
+        "500": $gray-500,
+        "600": $gray-600,
+        "700": $gray-700,
+        "800": $gray-800,
+        "900": $gray-900,
+    );
+
+    // Prefix gray variables
+    @each $color, $value in $grays {
+        --#{$prefix}gray-#{$color}: #{$value};
+    }
+
+    // theme-color
+    --#{$prefix}light:       #{$gray-300};
+    --#{$prefix}light-rgb:   #{to-rgb($gray-300)};
+    --#{$prefix}dark:        #{$gray-900};
+    --#{$prefix}dark-rgb:    #{to-rgb($gray-900)};
+
+    // text-muted color
+    --#{$prefix}gray:        #{$gray-500};
+    
+    --#{$prefix}heading-color:        #acbfd2;
+
+    
+    // Card Border
+    --#{$prefix}theme-card-border-color:  transparent;
+
+    // scss-docs-start box-shadow-variables
+    --#{$prefix}box-shadow:                  0 0 35px 0 rgba(154, 161, 171, 0.15);
+    --#{$prefix}box-shadow-sm:               0 0.75rem 0.6rem rgba(56, 65, 74,.03);
+    --#{$prefix}box-shadow-lg:               0 0 45px 0 rgba(0, 0, 0, 0.12);
+    --#{$prefix}box-shadow-inset:            inset 0 1px 1px rgba(0, 0, 0, .075);
+}
+
+// ===================================================== //
+// ==================== Main Menu =====================  //
+// ===================================================== //
+
+// Background Light left-sidebar
+html[data-menu-color="light"] {
+  --#{$prefix}menu-bg:                             #ffffff;
+  --#{$prefix}menu-item-color:                       #{$gray-700};
+  --#{$prefix}menu-item-hover:                       #{$primary};
+  --#{$prefix}menu-item-active:                      #{$primary};
+  --#{$prefix}menu-item-active-bg:                #{rgba($primary, 0.2)};
+}
+
+// Dark Left Sidebar
+html[data-menu-color="dark"],
+html[data-bs-theme="dark"][data-menu-color="light"] {
+  --#{$prefix}menu-bg:                               #39444e;
+  --#{$prefix}menu-item-color:                       #9097a7;
+  --#{$prefix}menu-item-hover:                       #{$white};
+  --#{$prefix}menu-item-active:                      #{$primary};
+  --#{$prefix}menu-item-active-bg:                #{rgba($primary, 0.2)};
+}
+
+// Brand Menu
+html[data-menu-color="brand"] {
+  --#{$prefix}menu-bg:                             #{$primary};
+  --#{$prefix}menu-item-color:                     #{rgba($white, 0.7)};
+  --#{$prefix}menu-item-hover:                     #ffffff;
+  --#{$prefix}menu-item-active:                    #ffffff;
+  --#{$prefix}menu-item-active-bg:              rgba(255, 255, 255, 0.2);
+}
+
+// gradient Menu
+html[data-menu-color="gradient"] {
+  --#{$prefix}menu-bg:                             #242540;
+  --#{$prefix}menu-item-color:                     #{rgba($white, 0.7)};
+  --#{$prefix}menu-item-hover:                     #ffffff;
+  --#{$prefix}menu-item-active:                    #ffffff;
+  --#{$prefix}menu-item-active-bg:              rgba(255, 255, 255, 0.2);
+}
+
+
+// ==================================================== //
+// ==================== Topbar ======================== //
+// ==================================================== //
+
+// Light Topbar
+html[data-topbar-color="light"] {
+  --#{$prefix}topbar-bg:                         #fff;
+  --#{$prefix}topbar-item-color:                 #{$gray-700};
+  --#{$prefix}topbar-item-hover-color:           #{$primary};
+  --#{$prefix}topbar-search-bg:                  #{tint-color($gray-200,10%)};
+}
+
+// Dark Topbar
+html[data-topbar-color="dark"],
+html[data-bs-theme="dark"][data-topbar-color="light"] {
+  --#{$prefix}topbar-bg:                  #3d4752;
+  --#{$prefix}topbar-item-color:          rgba(255,255,255,.6);
+  --#{$prefix}topbar-item-hover-color:    #bccee4;
+  --#{$prefix}topbar-search-bg:           #464f5b;
+}
+
+// Brand Topbar
+html[data-topbar-color="brand"] {
+  --#{$prefix}topbar-bg:                         #{$primary};
+  --#{$prefix}topbar-item-color:                 rgba(255, 255, 255, 0.7);
+  --#{$prefix}topbar-item-hover-color:           #ffffff;
+  --#{$prefix}topbar-search-bg:                  rgba(255, 255, 255, 0.1);
+}
+
+
+// ================================================================================ //
+// ==================== Two Column Icon Menu Background Color ===================== //
+// ================================================================================ //
+
+// Dark Left Sidebar
+html[data-two-column-color="dark"] {
+  --#{$prefix}twocolumn-sidebar-iconview-bg:                     #37424c;
+  --#{$prefix}twocolumn-iconview-item-color:                     #ffffff;
+  --#{$prefix}twocolumn-iconview-icon-active-bg:                   #{rgba($primary, 0.2)};
+}
+
+// Brand Menu
+html[data-two-column-color="brand"] {
+  --#{$prefix}twocolumn-sidebar-iconview-bg:                       #{$primary};
+  --#{$prefix}twocolumn-iconview-item-color:                     #ffffff;
+  --#{$prefix}twocolumn-iconview-icon-active-bg:                 rgba(255, 255, 255, 0.2);
+}
+
+// gradient Menu
+html[data-two-column-color="gradient"] {
+  --#{$prefix}twocolumn-sidebar-iconview-bg:                     #683ba9;
+  --#{$prefix}twocolumn-iconview-item-color:                     #ffffff;
+  --#{$prefix}twocolumn-iconview-icon-active-bg:                 rgba(255, 255, 255, 0.2);
+}

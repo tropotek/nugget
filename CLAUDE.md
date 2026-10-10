@@ -40,6 +40,9 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
+- `resources/scss/`: `app.scss` is the entry (Bootstrap, the Minton default skin, then Nugget's styles) and `icons.scss` the icon fonts. `config/default/` and `custom/` are lifted from Minton (`~/Projects/Dev/Minton/Minton/resources/scss`).
+- `resources/js/`: `app.js` is the entry. `minton/` holds the template's own scripts.
+- `resources/fonts/`, `resources/images/`: icon fonts and images the SCSS refers to.
 - `tests/Feature`, `tests/Unit`: PHPUnit tests.
 - `_notes/`: local planning docs, gitignored.
 - `version.md`: the app version.
@@ -50,4 +53,6 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Holdings are derived from the transaction ledger, never stored.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
+- jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
+- Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
 - Run Pint before committing.

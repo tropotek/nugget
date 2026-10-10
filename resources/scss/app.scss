@@ -1,0 +1,64 @@
+// Nugget SCSS entrypoint: Bootstrap with the Minton default skin (light and dark), then Nugget's own styles.
+//
+// The partials under config/default and custom/ are lifted from the Minton template (v8.0.0,
+// ~/Projects/Dev/Minton/Minton/resources/scss). This file replaces Minton's config/default/bootstrap.scss
+// and app.scss, and imports only the parts Nugget uses: the vertical layout, and no plugin styles
+// beyond ApexCharts and SimpleBar. To bring another Minton partial in, copy it across and import it here.
+
+// Core
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "config/default/variables";
+@import "config/default/variables-dark";
+@import "config/default/variables-custom";
+@import "config/default/theme-config";
+@import "bootstrap/scss/bootstrap";
+
+// Bootstrap component overrides
+@import "custom/components/accordions";
+@import "custom/components/badge";
+@import "custom/components/backgrounds";
+@import "custom/components/breadcrumb";
+@import "custom/components/buttons";
+@import "custom/components/card";
+@import "custom/components/dropdown";
+@import "custom/components/forms";
+@import "custom/components/modal";
+@import "custom/components/nav";
+@import "custom/components/pagination";
+@import "custom/components/popover";
+@import "custom/components/progress";
+@import "custom/components/reboot";
+@import "custom/components/tables";
+@import "custom/components/type";
+
+// Structure (vertical layout)
+@import "custom/structure/general";
+@import "custom/structure/left-menu";
+@import "custom/structure/topbar";
+@import "custom/structure/page-head";
+@import "custom/structure/footer";
+@import "custom/structure/layouts";
+
+// Components
+@import "custom/components/avatar";
+@import "custom/components/alerts";
+@import "custom/components/helper";
+@import "custom/components/social";
+@import "custom/components/widgets";
+@import "custom/components/custom-checkbox";
+@import "custom/components/ribbons";
+@import "custom/components/print";
+@import "custom/components/preloader";
+
+// Pages
+@import "custom/pages/authentication";
+@import "custom/pages/error";
+@import "custom/pages/logout";
+@import "custom/pages/profile";
+
+// Plugins
+@import "custom/plugins/apexcharts";
+@import "custom/plugins/slimscroll";
+
+// Nugget

@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
@@ -11,16 +10,26 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [
             laravel({
-                input: ['resources/css/app.css', 'resources/js/app.js'],
+                input: ['resources/scss/app.scss', 'resources/scss/icons.scss', 'resources/js/app.js'],
                 refresh: true,
                 fonts: [
-                    bunny('Instrument Sans', {
-                        weights: [400, 500, 600],
+                    // The Minton skin's text font, self-hosted (see config/default/_variables-custom.scss).
+                    bunny('Roboto', {
+                        weights: [300, 400, 500, 700],
+                        optimizedFallbacks: false,
                     }),
                 ],
             }),
-            tailwindcss(),
         ],
+        css: {
+            preprocessorOptions: {
+                scss: {
+                    // Bootstrap 5.3 and the Minton skin are written in the old Sass style (@import, global
+                    // built-ins). Dart Sass flags every use; these are not ours to fix.
+                    silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'if-function'],
+                },
+            },
+        },
         server: {
             host: '0.0.0.0',
             port,

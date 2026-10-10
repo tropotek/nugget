@@ -1,0 +1,76 @@
+// 
+// tables.scss
+//
+
+th {
+    font-weight: $font-weight-semibold;
+}
+
+//Table centered (Custom)
+.table-centered {
+
+    td,
+    th {
+        vertical-align: middle !important;
+    }
+}
+
+
+// Table 
+
+.table-nowrap {
+
+    th,
+    td {
+        white-space: nowrap;
+    }
+}
+
+.table-bordered {
+    border: $table-border-width solid $table-border-color;
+
+    th,
+    td {
+        border: $table-border-width solid $table-border-color;
+    }
+}
+
+// Custom table components (Custom)
+.table {
+    .table-user {
+        img {
+            height: 30px;
+            width: 30px;
+        }
+    }
+}
+
+.action-icon {
+    color: var(--#{$prefix}gray-600);
+    font-size: 1.2rem;
+    display: inline-block;
+    padding: 0 3px;
+
+    &:hover {
+        color: var(--#{$prefix}gray-700);
+    }
+}
+
+
+// Dark Mode light and dark table
+html[data-bs-theme="dark"] {
+    .table-light {
+        --#{$prefix}table-bg: #3e4954;
+        --#{$prefix}table-color: var(--#{$prefix}body-color);
+        --#{$prefix}table-border-color: #{$table-group-separator-color};
+    }
+
+    .table-dark {
+        --#{$prefix}table-bg: var(--#{$prefix}light);
+
+        tbody,
+        tr {
+            border-color: var(--#{$prefix}gray-300);
+        }
+    }
+}

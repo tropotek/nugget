@@ -1,0 +1,66 @@
+// Variables
+//
+// custom-variables
+//
+
+// Roboto is self-hosted by the Vite fonts plugin (vite.config.js), not loaded from Google.
+
+$font-family-secondary:       'Roboto', sans-serif;
+
+// Leftbar width
+$leftbar-width:                                     240px;
+$leftbar-width-sm:                                  160px;
+$leftbar-width-condensed:                           70px;
+
+$menu-item-size:                                    0.95rem;
+$menu-sub-item-size:                                0.9rem;
+
+// Boxed layout width
+$boxed-layout-width:                                1300px;
+
+// Two Column sidebar
+$twocolumn-sidebar-width:                           220px;
+$twocolumn-sidebar-iconview-width:                  70px;
+
+// Topbar Height
+$topbar-height:                                     70px;
+
+// Horizontal Layout
+$topnav-height:                                     55px;
+$horizontal-layout-width:                           90%;
+
+// Rightbar Width
+$rightbar-width:                                    270px;
+
+
+// Body minimum height
+$body-min-height:                                   1550px;
+
+// Dropdown Large
+$dropdown-lg-width:                                 320px;
+
+// User authentication Background
+$auth-bg:                                         #ffffff;
+$auth-bg-alt:                                     #6658dd;
+$auth-img-bg:                                     url(../../../images/bg-auth.jpg);
+$auth-img-pattern-bg:                             url(../../../images/bg-pattern.png);
+
+// Menu background and text color
+$menu-bg:                           var(--#{$prefix}menu-bg);
+$menu-item-color:                   var(--#{$prefix}menu-item-color);
+$menu-item-hover:                   var(--#{$prefix}menu-item-hover);
+$menu-item-active:                  var(--#{$prefix}menu-item-active);
+$menu-sub-item-active:              var(--#{$prefix}menu-sub-item-active);
+$menu-item-active-bg:               var(--#{$prefix}menu-item-active-bg);
+
+// Topbar
+$topbar-bg:                         var(--#{$prefix}topbar-bg);
+$topbar-search-bg:                  var(--#{$prefix}topbar-search-bg);
+
+$topbar-item-color:                 var(--#{$prefix}topbar-item-color);
+$topbar-item-hover-color:           var(--#{$prefix}topbar-item-hover-color);
+
+// Two Column Sidebar Menu
+$twocolumn-sidebar-iconview-bg:           var(--#{$prefix}twocolumn-sidebar-iconview-bg);
+$twocolumn-iconview-item-color:           var(--#{$prefix}twocolumn-iconview-item-color);
+$twocolumn-iconview-icon-active-bg:       var(--#{$prefix}twocolumn-iconview-icon-active-bg);
