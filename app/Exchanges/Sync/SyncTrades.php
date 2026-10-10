@@ -10,6 +10,7 @@ use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\Transaction;
+use App\Notifications\NewTrades;
 use App\Support\Decimal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,8 @@ use UnexpectedValueException;
  * it: a page the ledger cannot support (a sale of more than is held) is
  * refused whole, and the next sync starts from the same place.
  *
+ * The owner gets one NewTrades notification for a sync that stored any.
+ *
  * A trade is passed over, and counted in the note, when no asset has its
  * market, and when its market is not priced in AUD: a coin sold for another
  * coin is two entries, which this does not make.
@@ -33,6 +36,9 @@ class SyncTrades
 {
     /** The most pages read in one sync. The next sync carries on from there. */
     public const MAX_PAGES = 25;
+
+    /** @var array<int, int> the trades stored in this run, by asset id */
+    private array $stored = [];
 
     public function __construct(private readonly ParcelMatcher $matcher) {}
 
@@ -49,18 +55,43 @@ class SyncTrades
 
         $assets = $exchange->tradedAssets();
         $passedOver = [];
+        $this->stored = [];
 
-        for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-            $trades = $driver->tradesAfter($exchange->trade_cursor);
+        try {
+            for ($page = 1; $page <= self::MAX_PAGES; $page++) {
+                $trades = $driver->tradesAfter($exchange->trade_cursor);
 
-            if ($trades === []) {
-                return $this->note($passedOver);
+                if ($trades === []) {
+                    return $this->note($passedOver);
+                }
+
+                $passedOver = [...$passedOver, ...$this->store($exchange, $assets, $trades)];
             }
 
-            $passedOver = [...$passedOver, ...$this->store($exchange, $assets, $trades)];
+            return trim($this->note($passedOver).' More trades remain: the next sync carries on.');
+        } finally {
+            // Whatever was stored is told, even when a later page fails.
+            $this->announce($exchange, $assets);
+        }
+    }
+
+    /**
+     * One notification for the run, with the trades stored on each asset.
+     *
+     * @param  Collection<string, Asset>  $assets
+     */
+    private function announce(Exchange $exchange, Collection $assets): void
+    {
+        if ($this->stored === []) {
+            return;
         }
 
-        return trim($this->note($passedOver).' More trades remain: the next sync carries on.');
+        $exchange->user->notify(new NewTrades($exchange, $assets
+            ->filter(fn (Asset $asset) => isset($this->stored[$asset->id]))
+            ->map(fn (Asset $asset) => ['asset_id' => $asset->id, 'asset' => $asset->name, 'count' => $this->stored[$asset->id]])
+            ->sortBy('asset')
+            ->values()
+            ->all()));
     }
 
     /**
@@ -70,9 +101,10 @@ class SyncTrades
      */
     private function store(Exchange $exchange, Collection $assets, array $trades): array
     {
-        return DB::transaction(function () use ($exchange, $assets, $trades) {
+        [$passedOver, $added] = DB::transaction(function () use ($exchange, $assets, $trades) {
             $passedOver = [];
             $changed = [];
+            $added = [];
 
             foreach ($trades as $trade) {
                 $asset = $trade->quote === 'AUD' ? $assets->get($trade->market) : null;
@@ -85,6 +117,7 @@ class SyncTrades
 
                 if ($this->add($asset, $trade)) {
                     $changed[$asset->id] = $asset;
+                    $added[$asset->id] = ($added[$asset->id] ?? 0) + 1;
                 }
             }
 
@@ -94,8 +127,15 @@ class SyncTrades
 
             $exchange->forceFill(['trade_cursor' => end($trades)->id])->save();
 
-            return $passedOver;
+            return [$passedOver, $added];
         });
+
+        // Counted only once the page is kept.
+        foreach ($added as $assetId => $count) {
+            $this->stored[$assetId] = ($this->stored[$assetId] ?? 0) + $count;
+        }
+
+        return $passedOver;
     }
 
     /**

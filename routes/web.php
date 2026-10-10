@@ -6,6 +6,7 @@ use App\Http\Controllers\AssetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExchangeController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleParcelController;
 use App\Http\Controllers\TransactionController;
@@ -40,6 +41,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('exchanges', ExchangeController::class)->except(['show']);
     Route::post('/exchanges/{exchange}/test', [ExchangeController::class, 'test'])->name('exchanges.test');
     Route::post('/exchanges/{exchange}/sync', [ExchangeController::class, 'sync'])->name('exchanges.sync');
+
+    // The signed-in user's own. Opening one marks it read and goes where it leads.
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/menu', [NotificationController::class, 'menu'])->name('notifications.menu');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::get('/notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

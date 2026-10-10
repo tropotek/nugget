@@ -11,5 +11,6 @@ import './asset-form';
 import './transaction-form';
 import './parcel-picker';
 import './chart';
+import './notifications';
 
 window.htmx = htmx;

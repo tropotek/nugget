@@ -76,6 +76,20 @@ return [
         'balance_tolerance' => env('NUGGET_SYNC_BALANCE_TOLERANCE', '0.000001'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    |
+    | A notification that has been read is deleted this many days after it
+    | last changed. An unread one is kept, and so is a balance mismatch.
+    |
+    */
+
+    'notifications' => [
+        'keep_read_days' => (int) env('NUGGET_NOTIFICATIONS_KEEP_READ_DAYS', 30),
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

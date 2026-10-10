@@ -14,3 +14,4 @@ Schedule::command('nugget:sync-exchanges')->everyFiveMinutes()->withoutOverlappi
 
 // Times are UTC. This one only has to be off the 5-minute marks.
 Schedule::command('nugget:prune-prices')->dailyAt('03:20')->withoutOverlapping(10);
+Schedule::command('nugget:prune-notifications')->dailyAt('03:25')->withoutOverlapping(10);

@@ -23,6 +23,7 @@ docker compose exec app php artisan nugget:create-admin you@example.com   # crea
 docker compose exec app php artisan nugget:fetch-prices    # fetch and store every active asset's price now (--asset=ID)
 docker compose exec app php artisan nugget:prune-prices    # delete intraday prices older than 48 hours
 docker compose exec app php artisan nugget:sync-exchanges  # sync every active exchange now (--exchange=ID, --all-trades)
+docker compose exec app php artisan nugget:prune-notifications   # delete read notifications older than 30 days
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -32,7 +33,7 @@ docker compose build app                          # after changing the Dockerfil
 |---|---|---|
 | `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
 | `vite` | http://localhost:5778 | Vite dev server, hot reload |
-| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed and syncs every active exchange every 5 minutes, and prunes prices nightly |
+| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed and syncs every active exchange every 5 minutes, and prunes prices and read notifications nightly |
 | `mailpit` | http://localhost:8779 | catches all outgoing mail |
 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
@@ -96,6 +97,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - An exchange's trades are stored by `App\Exchanges\Sync\SyncTrades`: a buy or a sell with source `exchange` and the exchange's trade id as `external_id`, on the first-added asset of that exchange with the trade's market. `exchanges.trade_cursor` is the last trade read. A trade on a market with no asset, or not priced in AUD, is passed over and noted, never guessed at.
 - The assets held on an exchange are `$exchange->tradedAssets()` (by market id; the first added where two share a market). The sync stores trades on them and compares their holdings with the exchange's balances. An asset that only shares a market for its price is not on the exchange.
 - Where an exchange's balance and the ledger differ by more than `nugget.sync.balance_tolerance`, the owner has one `App\Notifications\BalanceMismatch` database notification per asset, kept in step by `App\Exchanges\Sync\ReconcileBalances` and deleted when they agree. Nothing settles it but a transaction the owner saves; `BalanceMismatch::links()` gives the filled-in forms.
+- A notification to a user is a database notification that implements `App\Notifications\Contracts\Presentable`: `present($data)` gives its title, text, url and icon from the stored data alone, since it is shown long after it is sent. Read a user's with `App\Support\NotificationFeed`. The top bar's bell and the browser notification both come from that, so a new type needs nothing else.
 - In a Blade view use `@php … @endphp` blocks, not the inline `@php(…)` form: mixing the two in one file breaks its compilation.
 - A market id is the exchange's own (`BTC-AUD` on BTC Markets). A feed symbol is Swissquote's (`XAU/AUD`).
 - No test touches the network, and `Tests\TestCase` makes a call that is not faked throw: fake every outside call with `Http::fake()` and a recorded response from `tests/Fixtures/`. Record a new fixture from the real API, and only from public or made-up data.

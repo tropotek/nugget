@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Enums\TransactionType;
 use App\Ledger\Holding;
 use App\Models\Exchange;
+use App\Notifications\Contracts\Presentable;
 use App\Support\Decimal;
 use Illuminate\Notifications\Notification;
 
@@ -17,7 +18,7 @@ use Illuminate\Notifications\Notification;
  * and deletes it when they agree again. Nothing changes the ledger: the
  * owner settles it with a transfer or an adjustment, which `links()` leads to.
  */
-class BalanceMismatch extends Notification
+class BalanceMismatch extends Notification implements Presentable
 {
     public function __construct(
         private readonly Exchange $exchange,
@@ -53,6 +54,18 @@ class BalanceMismatch extends Notification
             'on_exchange' => (string) $this->onExchange,
             'difference' => (string) $this->onExchange->sub($this->holding->units),
         ];
+    }
+
+    public static function present(array $data): Presented
+    {
+        $difference = Decimal::of((string) $data['difference']);
+
+        return new Presented(
+            "{$data['asset']} does not match {$data['exchange']}",
+            "{$data['exchange']} has {$difference->abs()} {$data['unit']} ".($difference->isNegative() ? 'less' : 'more').' than the ledger.',
+            route('exchanges.edit', $data['exchange_id']).'#balance-mismatches',
+            'ri-error-warning-line',
+        );
     }
 
     /**

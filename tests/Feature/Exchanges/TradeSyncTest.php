@@ -16,6 +16,7 @@ use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\NewTrades;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -397,5 +398,51 @@ class TradeSyncTest extends TestCase
             'Balances were not read: A plain exchange has no call for them. Trades were not read: A plain exchange has no call for them.',
             $exchange->refresh()->last_sync_note,
         );
+    }
+
+    // Telling the owner
+
+    public function test_a_sync_that_stores_trades_tells_the_owner_once(): void
+    {
+        $this->fakeTrades();
+
+        $this->sync();
+
+        $notification = $this->user->notifications()->where('type', NewTrades::class)->sole();
+
+        // Two pages, one notification: 2 on Bitcoin and 1 on Cardano. The two passed over are not counted.
+        $this->assertNull($notification->read_at);
+        $this->assertSame([
+            'exchange_id' => $this->exchange->id,
+            'exchange' => 'Main account',
+            'count' => 3,
+            'assets' => [
+                ['asset_id' => $this->bitcoin->id, 'asset' => 'Bitcoin', 'count' => 2],
+                ['asset_id' => $this->cardano->id, 'asset' => 'Cardano', 'count' => 1],
+            ],
+        ], $notification->data);
+    }
+
+    public function test_a_sync_that_stores_nothing_tells_nobody(): void
+    {
+        $this->fakeTrades();
+        $this->sync();
+        $this->user->notifications()->delete();
+
+        // Nothing new, and then everything read again with nothing to add.
+        $this->sync();
+        $this->artisan('nugget:sync-exchanges', ['--all-trades' => true]);
+
+        $this->assertSame(0, $this->user->notifications()->where('type', NewTrades::class)->count());
+    }
+
+    public function test_the_trades_of_a_page_that_is_refused_are_not_announced_but_those_kept_are(): void
+    {
+        $sale = '[{"id":"1000000004","marketId":"BTC-AUD","timestamp":"2025-06-15T04:30:00.000000Z","price":"160000","amount":"0.5","side":"Ask","fee":"680"}]';
+        $this->fakeTrades(['1000000003' => $sale]);
+
+        $this->assertFalse($this->sync());
+
+        $this->assertSame(2, $this->user->notifications()->where('type', NewTrades::class)->sole()->data['count']);
     }
 }

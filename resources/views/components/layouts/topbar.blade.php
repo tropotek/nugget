@@ -15,6 +15,10 @@
             </li>
 
             @auth
+                @if (Route::has('notifications.menu'))
+                    <x-layouts.notifications />
+                @endif
+
                 <li class="dropdown notification-list topbar-dropdown">
                     <a class="nav-link dropdown-toggle nav-user me-0" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
                         <i class="ri-account-circle-line noti-icon"></i>
