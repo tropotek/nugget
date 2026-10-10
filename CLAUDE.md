@@ -46,6 +46,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 - `app/`: application code, `App\` namespace.
 - `app/Ledger/`: the calculations on the ledger: the parcel matcher, the holdings query, valuations and the value series.
+- `app/Tax/`: the capital gains report: the calculator, a section's totals and the year's summary.
 - `app/Prices/`: where prices are read from (an exchange's ticker, the Swissquote feed).
 - `app/Exchanges/`: Nugget's own exchange drivers and the registry that makes them.
 - `tests/Fixtures/`: recorded API responses. `tests/Fakes/`: stand-ins for outside services.
@@ -105,6 +106,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.
 - The stored parcels show what is left now. What a sale could use at its own moment comes from `ParcelMatcher::openBefore($sale)`, which replays the ledger up to the sale and rolls back: the parcels it returns are not rows, so read them and never save them. `App\Ledger\ParcelChoice::forSale()` turns them into the lines of the parcel picker.
+- A user's capital gains for a year come from `App\Tax\CgtCalculator::forYear($user, $year, $carriedForward)`: an `App\Tax\CgtReport` with the disposals by `App\Enums\TaxSection` (crypto, other) and the `CgtSummary`. Every screen, file and API that shows the report reads this and works nothing out itself. The arithmetic is in `CgtSummary::of()`, which has no database.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
 - A page is a Blade view wrapped in `<x-layouts.app title="…">` (or `<x-layouts.guest>`). The title is both the heading and the browser title; an `actions` slot puts buttons beside the heading.
