@@ -46,6 +46,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 - `app/`: application code, `App\` namespace.
 - `app/Ledger/`: the calculations on the ledger: the parcel matcher, the holdings query, valuations and the value series.
+- `app/Api/`: what each API endpoint and MCP tool returns, as plain arrays.
 - `app/Tax/`: the capital gains report: the calculator, a section's totals and the year's summary.
 - `app/Prices/`: where prices are read from (an exchange's ticker, the Swissquote feed).
 - `app/Exchanges/`: Nugget's own exchange drivers and the registry that makes them.
@@ -120,7 +121,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - The TradingView page (`resources/js/tradingview.js`) is the only place a script is loaded from another site. Everything else is bundled by Vite.
 - jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
-- The JSON API is `routes/api.php`: the `/api/v1` group, GET routes only, reached with a Sanctum personal access token that has the `read` ability and never with the web session. Put an endpoint inside that group and its controller in `App\Http\Controllers\Api`. It reads the data of `$request->user()` only, wraps what it returns in `data`, and answers errors in JSON. Tokens are made and revoked on the profile page and shown once.
+- The JSON API is `routes/api.php`: the `/api/v1` group, GET routes only, reached with a Sanctum personal access token that has the `read` ability and never with the web session. Put an endpoint inside that group. Its data is worked out by a class in `App\Api` that returns a plain array for one user, built on the code the screens use; the controller only wraps it in `data`. Write values with `App\Api\Format`: amounts as decimal strings, never JSON numbers, and dates as ISO 8601 in the user's timezone. No response holds an exchange key or secret. Errors are JSON. Tokens are made and revoked on the profile page and shown once.
 - Every page needs a signed-in user: put its route inside the `auth` group in `routes/web.php`. The login and password reset routes are in `routes/auth.php`. There is no registration.
 - Login and password recovery are throttled per email and IP address together, with the limits in `config/nugget.php`. Recovery and reset answer the same whether or not the email has an account; keep it that way when changing them.
 - Dates are stored in UTC and shown in the reader's timezone. In a view use `<x-date :value="…" />` (it takes a `format`); elsewhere use `App\Support\LocalTime::of($date)`. Never format a stored date directly.
