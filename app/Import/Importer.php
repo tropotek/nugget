@@ -19,6 +19,7 @@ class Importer
         Passes\ExchangesPass::class,
         Passes\AssetsPass::class,
         Passes\AssetLogPass::class,
+        Passes\TicksPass::class,
     ];
 
     /**
