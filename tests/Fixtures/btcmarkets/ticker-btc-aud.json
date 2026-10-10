@@ -1,0 +1,13 @@
+{
+    "marketId": "BTC-AUD",
+    "bestBid": "118440.39",
+    "bestAsk": "118603.28",
+    "lastPrice": "118600",
+    "volume24h": "6.22833136",
+    "volumeQte24h": "737289.89932985",
+    "price24h": "223.14",
+    "pricePct24h": "0.19",
+    "low24h": "117836",
+    "high24h": "119494.21",
+    "timestamp": "2026-10-10T08:47:42.437000Z"
+}

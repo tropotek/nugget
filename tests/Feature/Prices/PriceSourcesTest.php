@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Prices;
 
-use App\Exchanges\ExchangeClient;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Prices\ExchangePriceSource;
@@ -15,8 +14,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
-use Tests\Fakes\FakeCcxt;
-use Tests\Fakes\FakeExchangeClient;
 use Tests\TestCase;
 
 class PriceSourcesTest extends TestCase
@@ -30,7 +27,7 @@ class PriceSourcesTest extends TestCase
 
     public function test_an_asset_is_priced_by_the_source_it_names(): void
     {
-        $onExchange = Asset::factory()->onExchange(Exchange::factory()->create(), 'BTC/AUD')->create();
+        $onExchange = Asset::factory()->onExchange(Exchange::factory()->create(), 'BTC-AUD')->create();
 
         $this->assertInstanceOf(PriceSource::class, $this->sources());
         $this->assertInstanceOf(ExchangePriceSource::class, $this->sources()->for($onExchange));
@@ -40,14 +37,16 @@ class PriceSourcesTest extends TestCase
 
     public function test_it_quotes_an_asset_from_its_exchange_or_from_the_feed(): void
     {
-        $ccxt = (new FakeCcxt)->ticker('BTC/AUD', ['bid' => 118497.22, 'ask' => 118679.05]);
-        $this->app->instance(ExchangeClient::class, new FakeExchangeClient($ccxt));
-        Http::fake(['*/XAU/AUD' => Http::response(file_get_contents(base_path('tests/Fixtures/swissquote/xau-aud.json')))]);
+        Http::preventStrayRequests();
+        Http::fake([
+            '*/markets/BTC-AUD/ticker' => Http::response(file_get_contents(base_path('tests/Fixtures/btcmarkets/ticker-btc-aud.json'))),
+            '*/XAU/AUD' => Http::response(file_get_contents(base_path('tests/Fixtures/swissquote/xau-aud.json'))),
+        ]);
 
-        $bitcoin = Asset::factory()->onExchange(Exchange::factory()->create(), 'BTC/AUD')->create();
+        $bitcoin = Asset::factory()->onExchange(Exchange::factory()->create(), 'BTC-AUD')->create();
         $gold = Asset::factory()->metal()->create();
 
-        $this->assertSame('118497.22', (string) $this->sources()->quote($bitcoin)->bid);
+        $this->assertSame('118440.39', (string) $this->sources()->quote($bitcoin)->bid);
         $this->assertSame('6002.774', (string) $this->sources()->quote($gold)->bid);
     }
 

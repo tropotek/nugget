@@ -42,22 +42,21 @@ class DatabaseSeeder extends Seeder
         $this->user('inactive@example.com', 'Inactive Member', 'password', active: false);
 
         $btcMarkets = $this->exchange($admin, 'BTC Markets', fn (ExchangeFactory $exchange) => $exchange->synced('1520.45'));
-        $this->exchange($admin, 'Kraken', fn (ExchangeFactory $exchange) => $exchange
+        $this->exchange($admin, 'BTC Markets (old account)', fn (ExchangeFactory $exchange) => $exchange
             ->inactive()
-            ->failed('kraken {"error":["EAPI:Invalid key"]}')
-            ->state(['driver' => 'kraken']));
+            ->failed('HTTP request returned status code 401: {"code":"InvalidAPIKey","message":"invalid API key"}'));
         $membersExchange = $this->exchange($member, 'BTC Markets', fn (ExchangeFactory $exchange) => $exchange->synced('75.00'));
 
-        $bitcoin = $this->asset($admin, 'Bitcoin', fn (AssetFactory $asset) => $asset->crypto()->onExchange($btcMarkets, 'BTC/AUD'));
+        $bitcoin = $this->asset($admin, 'Bitcoin', fn (AssetFactory $asset) => $asset->crypto()->onExchange($btcMarkets, 'BTC-AUD'));
         $coldWallet = $this->asset($admin, 'Bitcoin cold wallet', fn (AssetFactory $asset) => $asset
             ->crypto()
-            ->onExchange($btcMarkets, 'BTC/AUD')
+            ->onExchange($btcMarkets, 'BTC-AUD')
             ->state(['notes' => 'Held off the exchange, and priced by its market.']));
         $cardano = $this->asset($admin, 'Cardano', fn (AssetFactory $asset) => $asset
-            ->onExchange($btcMarkets, 'ADA/AUD')
+            ->onExchange($btcMarkets, 'ADA-AUD')
             ->state(['symbol' => 'ADA', 'unit' => 'ADA']));
         $litecoin = $this->asset($admin, 'Litecoin', fn (AssetFactory $asset) => $asset
-            ->onExchange($btcMarkets, 'LTC/AUD')
+            ->onExchange($btcMarkets, 'LTC-AUD')
             ->archived()
             ->state(['symbol' => 'LTC', 'unit' => 'LTC', 'notes' => 'Sold out and archived.']));
         $gold = $this->asset($admin, 'Gold bullion', fn (AssetFactory $asset) => $asset->metal());
@@ -69,7 +68,7 @@ class DatabaseSeeder extends Seeder
             ->state(['unit' => 'g', 'notes' => 'Found with the detector. Each find is entered at no cost.']));
         $coins = $this->asset($admin, 'Coin collection', fn (AssetFactory $asset) => $asset->other()->state(['in_total' => false]));
 
-        $membersBitcoin = $this->asset($member, 'Bitcoin', fn (AssetFactory $asset) => $asset->crypto()->onExchange($membersExchange, 'BTC/AUD'));
+        $membersBitcoin = $this->asset($member, 'Bitcoin', fn (AssetFactory $asset) => $asset->crypto()->onExchange($membersExchange, 'BTC-AUD'));
 
         // Times are UTC. The history spans three financial years, with sales
         // on both sides of the 12-month line, to exercise the tax report.

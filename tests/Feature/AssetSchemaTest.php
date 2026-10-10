@@ -75,7 +75,7 @@ class AssetSchemaTest extends TestCase
         $exchange = Exchange::factory()->create();
         $asset = $exchange->user->assets()->create([
             'name' => 'Bitcoin', 'symbol' => 'BTC', 'class' => 'crypto', 'unit' => 'BTC',
-            'exchange_id' => $exchange->id, 'market_id' => 'BTC/AUD',
+            'exchange_id' => $exchange->id, 'market_id' => 'BTC-AUD',
         ])->fresh();
 
         $this->assertSame(PricedBy::Exchange, $asset->pricedBy());
@@ -98,10 +98,10 @@ class AssetSchemaTest extends TestCase
     public static function mixedUpPriceSources(): array
     {
         return [
-            'a market with no exchange' => [['market_id' => 'BTC/AUD']],
+            'a market with no exchange' => [['market_id' => 'BTC-AUD']],
             'an exchange with no market' => [['exchange_id' => 'mine']],
-            'a market and a feed' => [['exchange_id' => 'mine', 'market_id' => 'BTC/AUD', 'feed_symbol' => 'XAU/AUD']],
-            'another users exchange' => [['exchange_id' => 'theirs', 'market_id' => 'BTC/AUD']],
+            'a market and a feed' => [['exchange_id' => 'mine', 'market_id' => 'BTC-AUD', 'feed_symbol' => 'XAU/AUD']],
+            'another users exchange' => [['exchange_id' => 'theirs', 'market_id' => 'BTC-AUD']],
         ];
     }
 
@@ -151,11 +151,11 @@ class AssetSchemaTest extends TestCase
     {
         $exchange = Exchange::factory()->create();
 
-        $asset = Asset::factory()->onExchange($exchange, 'ADA/AUD')->create()->fresh();
+        $asset = Asset::factory()->onExchange($exchange, 'ADA-AUD')->create()->fresh();
 
         $this->assertTrue($asset->user->is($exchange->user));
         $this->assertTrue($asset->exchange->is($exchange));
-        $this->assertSame('ADA/AUD', $asset->market_id);
+        $this->assertSame('ADA-AUD', $asset->market_id);
         $this->assertSame(PricedBy::Exchange, $asset->pricedBy());
     }
 
@@ -170,7 +170,7 @@ class AssetSchemaTest extends TestCase
     public function test_an_exchange_that_prices_an_asset_cannot_be_deleted(): void
     {
         $exchange = Exchange::factory()->create();
-        Asset::factory()->onExchange($exchange, 'BTC/AUD')->create();
+        Asset::factory()->onExchange($exchange, 'BTC-AUD')->create();
 
         $this->expectException(QueryException::class);
 

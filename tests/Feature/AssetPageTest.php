@@ -114,11 +114,11 @@ class AssetPageTest extends TestCase
     public function test_it_shows_the_details_of_the_asset(): void
     {
         $exchange = Exchange::factory()->for($this->user)->create(['label' => 'BTC Markets']);
-        $asset = Asset::factory()->onExchange($exchange, 'BTC/AUD')->archived()
+        $asset = Asset::factory()->onExchange($exchange, 'BTC-AUD')->archived()
             ->create(['name' => 'Old coin', 'symbol' => 'OLD', 'in_total' => false, 'notes' => "Line one\n<b>Line two</b>"]);
 
         $this->get($this->url($asset))
-            ->assertSeeInOrder(['Symbol', 'OLD', 'Class', 'Crypto', 'Priced by', 'BTC Markets', 'BTC/AUD', 'In the total', 'No', 'Archived', 'Notes'])
+            ->assertSeeInOrder(['Symbol', 'OLD', 'Class', 'Crypto', 'Priced by', 'BTC Markets', 'BTC-AUD', 'In the total', 'No', 'Archived', 'Notes'])
             ->assertSee("Line one<br />\n&lt;b&gt;Line two&lt;/b&gt;", false);
 
         $this->get($this->url())->assertSeeInOrder(['Priced by', 'No price', 'In the total', 'Yes'])->assertDontSee('Archived');

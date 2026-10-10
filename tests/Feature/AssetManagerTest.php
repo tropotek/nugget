@@ -88,9 +88,9 @@ class AssetManagerTest extends TestCase
     public function test_the_list_names_the_exchange_market_that_prices_an_asset(): void
     {
         $exchange = Exchange::factory()->for($this->user)->create(['label' => 'BTC Markets']);
-        Asset::factory()->onExchange($exchange, 'BTC/AUD')->create();
+        Asset::factory()->onExchange($exchange, 'BTC-AUD')->create();
 
-        $this->actingAs($this->user)->get('/assets')->assertSeeInOrder(['BTC Markets', 'BTC/AUD']);
+        $this->actingAs($this->user)->get('/assets')->assertSeeInOrder(['BTC Markets', 'BTC-AUD']);
     }
 
     public function test_the_list_marks_an_estimated_cost_and_an_asset_left_out_of_the_total(): void
@@ -179,14 +179,14 @@ class AssetManagerTest extends TestCase
 
         $this->actingAs($this->user)
             ->post('/assets', $this->form([
-                'priced_by' => 'exchange', 'exchange_id' => $exchange->id, 'market_id' => 'BTC/AUD', 'feed_symbol' => 'XAU/AUD',
+                'priced_by' => 'exchange', 'exchange_id' => $exchange->id, 'market_id' => 'BTC-AUD', 'feed_symbol' => 'XAU/AUD',
             ]))
             ->assertSessionHasNoErrors();
 
         $asset = $this->user->assets()->sole();
         $this->assertSame(PricedBy::Exchange, $asset->pricedBy());
         $this->assertTrue($asset->exchange->is($exchange));
-        $this->assertSame('BTC/AUD', $asset->market_id);
+        $this->assertSame('BTC-AUD', $asset->market_id);
         $this->assertNull($asset->feed_symbol);
     }
 
@@ -196,7 +196,7 @@ class AssetManagerTest extends TestCase
 
         $this->actingAs($this->user)
             ->post('/assets', $this->form([
-                'priced_by' => 'feed', 'feed_symbol' => 'XAU/AUD', 'exchange_id' => $exchange->id, 'market_id' => 'BTC/AUD',
+                'priced_by' => 'feed', 'feed_symbol' => 'XAU/AUD', 'exchange_id' => $exchange->id, 'market_id' => 'BTC-AUD',
             ]))
             ->assertSessionHasNoErrors();
 
@@ -244,7 +244,7 @@ class AssetManagerTest extends TestCase
         $theirs = Exchange::factory()->create();
 
         $this->actingAs($this->user)
-            ->post('/assets', $this->form(['priced_by' => 'exchange', 'exchange_id' => $theirs->id, 'market_id' => 'BTC/AUD']))
+            ->post('/assets', $this->form(['priced_by' => 'exchange', 'exchange_id' => $theirs->id, 'market_id' => 'BTC-AUD']))
             ->assertSessionHasErrors(['exchange_id']);
 
         $this->assertSame(0, Asset::count());
@@ -296,7 +296,7 @@ class AssetManagerTest extends TestCase
     public function test_an_asset_is_saved(): void
     {
         $exchange = Exchange::factory()->for($this->user)->create();
-        $asset = Asset::factory()->onExchange($exchange, 'BTC/AUD')->create();
+        $asset = Asset::factory()->onExchange($exchange, 'BTC-AUD')->create();
 
         $this->actingAs($this->user)
             ->put("/assets/{$asset->id}", $this->form(['name' => 'Gold bars', 'priced_by' => 'feed', 'feed_symbol' => 'XAU/AUD', 'notes' => '']))

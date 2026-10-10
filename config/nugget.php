@@ -43,6 +43,21 @@ return [
         'feed_url' => env('NUGGET_PRICE_FEED_URL', 'https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Exchanges
+    |--------------------------------------------------------------------------
+    |
+    | Where each exchange driver finds its API.
+    |
+    */
+
+    'exchanges' => [
+        'btcmarkets' => [
+            'url' => env('NUGGET_BTCMARKETS_URL', 'https://api.btcmarkets.net/v3'),
+        ],
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

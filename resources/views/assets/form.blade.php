@@ -96,7 +96,7 @@
                             <div class="col-sm-6 mb-3">
                                 <label for="market_id" class="form-label">Market</label>
                                 <input type="text" id="market_id" name="market_id" value="{{ old('market_id', $asset->market_id) }}"
-                                    maxlength="64" placeholder="BTC/AUD" @class(['form-control', 'is-invalid' => $errors->has('market_id')])>
+                                    maxlength="64" placeholder="BTC-AUD" @class(['form-control', 'is-invalid' => $errors->has('market_id')])>
                                 @error('market_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

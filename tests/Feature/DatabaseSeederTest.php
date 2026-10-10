@@ -98,8 +98,8 @@ class DatabaseSeederTest extends TestCase
         $admin = User::where('email', 'admin@example.com')->sole();
         $exchanges = $admin->exchanges()->orderBy('label')->get();
 
-        $this->assertSame(['BTC Markets', 'Kraken'], $exchanges->pluck('label')->all());
-        $this->assertSame(['btcmarkets', 'kraken'], $exchanges->pluck('driver')->all());
+        $this->assertSame(['BTC Markets', 'BTC Markets (old account)'], $exchanges->pluck('label')->all());
+        $this->assertSame(['btcmarkets', 'btcmarkets'], $exchanges->pluck('driver')->all());
         $this->assertTrue($exchanges[0]->active);
         $this->assertTrue($exchanges[0]->aud_balance->isPositive());
         $this->assertNotNull($exchanges[0]->last_synced_at);
@@ -140,7 +140,7 @@ class DatabaseSeederTest extends TestCase
 
         $bitcoin = $assets->firstWhere('name', 'Bitcoin');
         $this->assertSame('BTC Markets', $bitcoin->exchange->label);
-        $this->assertSame('BTC/AUD', $bitcoin->market_id);
+        $this->assertSame('BTC-AUD', $bitcoin->market_id);
         $this->assertSame('g', $assets->firstWhere('name', 'Prospected gold')->unit);
         $this->assertFalse($assets->firstWhere('name', 'Coin collection')->in_total);
         $this->assertSame(['Litecoin'], $assets->where('archived', true)->pluck('name')->all());

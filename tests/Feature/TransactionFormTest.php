@@ -370,7 +370,7 @@ class TransactionFormTest extends TestCase
     public function test_a_transaction_from_an_exchange_changes_only_its_notes(): void
     {
         $exchange = Exchange::factory()->for($this->user)->create(['label' => 'BTC Markets']);
-        $asset = Asset::factory()->onExchange($exchange, 'BTC/AUD')->create();
+        $asset = Asset::factory()->onExchange($exchange, 'BTC-AUD')->create();
         $trade = $this->add('2024-01-10', Transaction::factory()->buy('0.5', '100000', '10')->fromExchange('trade-1'), $asset);
 
         $this->get("/transactions/{$trade->id}/edit")

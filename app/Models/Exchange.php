@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A user's account on an exchange, reached through the ccxt driver named in
- * `driver`.
+ * A user's account on an exchange. `driver` names the App\Exchanges driver
+ * that talks to it (see App\Exchanges\ExchangeDrivers).
  *
  * The owner is set through the user's relation, and the balance, last sync
  * time and last error are written by the sync, so none of them is fillable.

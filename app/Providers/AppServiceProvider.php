@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Exchanges\ExchangeClient;
+use App\Exchanges\ExchangeDrivers;
 use App\Models\Contracts\Owned;
 use App\Models\User;
 use App\Policies\OwnerPolicy;
@@ -20,8 +20,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Settings::class);
 
-        // One for each request or command, so its ccxt clients and their rate limiters do not outlive it.
-        $this->app->scoped(ExchangeClient::class);
+        // One for each request or command, so the drivers it makes do not outlive it.
+        $this->app->scoped(ExchangeDrivers::class);
     }
 
     /**
