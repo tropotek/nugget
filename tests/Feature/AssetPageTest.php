@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ChartRange;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
+use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Factories\TransactionFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -41,6 +44,11 @@ class AssetPageTest extends TestCase
     private function rematch(?Asset $asset = null): void
     {
         app(ParcelMatcher::class)->rematch($asset ?? $this->asset);
+    }
+
+    private function price(string $day, string $bid, ?Asset $asset = null): Price
+    {
+        return Price::factory()->for($asset ?? $this->asset)->day($day)->quoted($bid, $bid)->create();
     }
 
     private function url(?Asset $asset = null): string
@@ -206,5 +214,132 @@ class AssetPageTest extends TestCase
                 && $transactions->first()->occurred_at->toDateString() === '2024-01-28'
                 && $transactions->last()->occurred_at->toDateString() === '2024-01-04')
             ->assertSee('All 28 transactions');
+    }
+
+    // The value at the latest price
+
+    public function test_it_shows_the_price_the_market_value_and_the_unrealised_gain(): void
+    {
+        $this->history();
+        $this->price('2025-07-31', '999');
+        $this->price('2025-08-01', '250')->forceFill(['updated_at' => '2025-08-01 01:55:00'])->save();
+
+        $this->get($this->url())
+            ->assertOk()
+            // 3 held at a cost of $510, selling at $250.
+            ->assertSeeInOrder(['Price', 'as at', '1 Aug 2025, 11:55am', '$250.00', 'per BTC', 'Market value', '$750.00', 'Unrealised gain', 'text-success', '$240.00', '47.06%'], false);
+    }
+
+    public function test_a_loss_is_shown_as_one(): void
+    {
+        $this->history();
+        $this->price('2025-08-01', '153');
+
+        $this->get($this->url())->assertSeeInOrder(['Market value', '$459.00', 'Unrealised gain', 'text-danger', '-$51.00', '-10.00%'], false);
+    }
+
+    public function test_a_cheap_coins_price_keeps_its_places(): void
+    {
+        $this->add('2024-01-10', Transaction::factory()->buy('3000', '0.00012'));
+        $this->rematch();
+        $this->price('2025-08-01', '0.00034');
+
+        $this->get($this->url())->assertSeeInOrder(['Price', '$0.00034', 'Market value', '$1.02', 'Unrealised gain', '$0.66']);
+    }
+
+    public function test_an_asset_with_no_price_has_no_value_and_no_chart(): void
+    {
+        $this->history();
+
+        $this->get($this->url())
+            ->assertOk()
+            ->assertSeeInOrder(['Price', 'No price', 'Market value', 'No price', 'Unrealised gain', 'No price', 'Details'])
+            ->assertDontSee('id="price-chart"', false)
+            ->assertDontSee('as at');
+    }
+
+    // The price chart
+
+    public function test_the_chart_has_the_day_prices_of_the_last_month(): void
+    {
+        $this->price('2025-06-30', '90');
+        $this->price('2025-07-01', '100');
+        $this->price('2025-08-01', '120.5');
+        Price::factory()->for($this->asset)->at('2025-08-01 01:00:00')->quoted('555', '555')->create();
+        $this->price('2025-07-15', '777', Asset::factory()->for($this->user)->create());
+
+        // A day row's time is its date, whatever the timezone.
+        $points = [[Price::day('2025-07-01')->getTimestampMs(), '100'], [Price::day('2025-08-01')->getTimestampMs(), '120.5']];
+
+        $this->get($this->url())
+            ->assertOk()
+            ->assertViewHas('points', $points)
+            ->assertSee('id="price-chart"', false)
+            ->assertSee('data-points="'.e(json_encode($points)).'"', false)
+            ->assertSee('data-times="false"', false)
+            ->assertSee('data-label="AUD per BTC"', false)
+            ->assertSee('href="'.e(route('assets.show', [$this->asset, 'range' => '1y'])).'"', false)
+            ->assertSeeInOrder(['48h', '1m', '1y', 'All']);
+    }
+
+    public function test_the_chart_reaches_back_as_far_as_its_range(): void
+    {
+        $this->price('2023-01-01', '50');
+        $this->price('2024-07-31', '80');
+        $this->price('2024-08-01', '90');
+        $this->price('2025-08-01', '120');
+
+        $count = fn (string $range) => fn (array $points) => count($points) === ['1m' => 1, '1y' => 2, 'all' => 4][$range];
+
+        $this->get($this->url().'?range=1m')->assertViewHas('points', $count('1m'));
+        $this->get($this->url().'?range=1y')->assertViewHas('points', $count('1y'));
+        $this->get($this->url().'?range=all')->assertViewHas('points', $count('all'));
+        $this->get($this->url().'?range=nonsense')->assertOk()->assertViewHas('range', ChartRange::Month);
+        $this->get($this->url().'?range[]=1y')->assertOk()->assertViewHas('range', ChartRange::Month);
+    }
+
+    public function test_the_48_hour_chart_has_the_intraday_prices_at_the_owners_clock_time(): void
+    {
+        $this->price('2025-08-01', '120');
+        Price::factory()->for($this->asset)->at('2025-07-30 01:55:00')->quoted('100', '100')->create();
+        Price::factory()->for($this->asset)->at('2025-07-30 02:00:00')->quoted('110', '110')->create();
+        Price::factory()->for($this->asset)->at('2025-08-01 02:00:00')->quoted('120', '120')->create();
+
+        // 02:00 UTC is midday in Melbourne.
+        $midday = fn (string $date) => CarbonImmutable::parse("{$date} 12:00:00", 'UTC')->getTimestampMs();
+
+        $this->get($this->url().'?range=48h')
+            ->assertViewHas('points', [[$midday('2025-07-30'), '110'], [$midday('2025-08-01'), '120']])
+            ->assertSee('data-times="true"', false);
+    }
+
+    public function test_a_range_with_no_prices_says_so(): void
+    {
+        $this->price('2025-08-01', '120');
+
+        $this->get($this->url().'?range=48h')
+            ->assertSee('id="price-chart"', false)
+            ->assertSee('No prices in this range.')
+            ->assertDontSee('data-price-chart', false);
+    }
+
+    public function test_htmx_is_sent_the_chart_alone(): void
+    {
+        $this->history();
+        $this->price('2025-08-01', '120');
+
+        $this->get($this->url().'?range=1y', ['HX-Request' => 'true', 'HX-Target' => 'price-chart'])
+            ->assertOk()
+            ->assertSee('id="price-chart"', false)
+            ->assertSee('data-price-chart', false)
+            ->assertDontSee('page-title', false)
+            ->assertDontSee('Units held');
+    }
+
+    public function test_another_users_chart_cannot_be_asked_for(): void
+    {
+        $theirs = Asset::factory()->create();
+
+        $this->get($this->url($theirs).'?range=1y', ['HX-Target' => 'price-chart'])->assertForbidden();
     }
 }

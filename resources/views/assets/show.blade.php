@@ -1,6 +1,8 @@
 {{--
-    One asset: what is held of it, the parcels still open and its latest transactions.
-    $holding: its App\Ledger\Holding. $history: the App\Ledger\TransactionSearch behind $transactions.
+    One asset: what is held of it and what that is worth, its price chart, the parcels still
+    open and its latest transactions.
+    $valuation: its App\Ledger\Valuation, and $holding the App\Ledger\Holding in it.
+    $history: the App\Ledger\TransactionSearch behind $transactions.
 --}}
 @php
     $user = auth()->user();
@@ -59,6 +61,61 @@
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-sm-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="text-muted fw-normal mt-0">
+                        Price
+                        @if ($valuation->isPriced())
+                            {{-- The day row is replaced at each fetch, so this is when the price was read. --}}
+                            <small class="float-end">as at <x-date :value="$valuation->price->updated_at" /></small>
+                        @endif
+                    </h5>
+                    <h3 class="mb-0">
+                        @if ($valuation->isPriced())
+                            ${{ $valuation->price->bid->formatPrice() }} <small class="text-muted">per {{ $asset->unit }}</small>
+                        @else
+                            <span class="text-muted">No price</span>
+                        @endif
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="text-muted fw-normal mt-0">Market value</h5>
+                    <h3 class="mb-0">
+                        @if ($valuation->isPriced())
+                            ${{ $valuation->value()->format() }}
+                        @else
+                            <span class="text-muted">No price</span>
+                        @endif
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="text-muted fw-normal mt-0">Unrealised gain</h5>
+                    <h3 class="mb-0">
+                        @if ($valuation->isPriced())
+                            <x-gain :value="$valuation->gain()" :percent="$valuation->gainPercent()" />
+                        @else
+                            <span class="text-muted">No price</span>
+                        @endif
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if ($valuation->isPriced())
+        @include('assets._chart')
+    @endif
 
     <div class="row">
         <div class="col-xl-4">

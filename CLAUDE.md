@@ -43,7 +43,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 ## Layout
 
 - `app/`: application code, `App\` namespace.
-- `app/Ledger/`: the calculations on the ledger: the parcel matcher and the holdings query.
+- `app/Ledger/`: the calculations on the ledger: the parcel matcher, the holdings query, valuations and the value series.
 - `app/Prices/`: where prices are read from (an exchange's ticker, the Swissquote feed).
 - `app/Exchanges/`: Nugget's own exchange drivers and the registry that makes them.
 - `tests/Fixtures/`: recorded API responses. `tests/Fakes/`: stand-ins for outside services.
@@ -67,6 +67,10 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
 - Show a unit price or a cost per unit with `$decimal->formatPrice()`, which keeps the places a price under a dollar needs. Show an AUD total with `format()`.
 - Holdings are derived from the transaction ledger, never stored. Read them with `App\Ledger\Holdings` (`forUser`, `forAsset`), which gives an `App\Ledger\Holding` per asset: units, cost base and average cost. It does no authorising.
+- Value holdings with `App\Ledger\Valuations` (`forUser`, `forAsset`), which gives an `App\Ledger\Valuation` per asset: the holding at its latest price, valued at the bid. Its value, gain and percentage are null when the asset has no price. Total them with `PortfolioValue::of()`, which counts only assets with `in_total` and leaves an unpriced holding out of both the value and the cost base.
+- Value over time comes from `App\Ledger\ValueSeries` (`daily`, `intraday`), for one asset or a user's `in_total` assets. It uses the units held at each point, read from the transactions, never today's units.
+- A chart's range is an `App\Enums\ChartRange` (48h from the intraday prices; 1m, 1y and all from the day prices). A chart is drawn by ApexCharts from a `data-points` attribute of `[time, value]` pairs, the time being the owner's clock time as UTC milliseconds (see `App\Prices\PriceChart` and `resources/js/price-chart.js`). Import ApexCharts with a dynamic `import()`, so that only a page with a chart loads it.
+- Show a gain or loss with `<x-gain :value="…" :percent="…" />`.
 - An asset's symbol and unit decide which assets transfers join, so they are fixed once it has a transaction (`$asset->hasTransactions()`), and it can then be archived but not deleted. An archived asset is left off the lists; its ledger and its holding are unchanged.
 - An asset's price source is one choice, `App\Enums\PricedBy` (exchange, feed or none), read with `$asset->pricedBy()`. A form saves only the chosen source's fields and nulls the others.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.

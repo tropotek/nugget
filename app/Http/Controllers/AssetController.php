@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AssetClass;
+use App\Enums\ChartRange;
 use App\Enums\PricedBy;
 use App\Http\Requests\AssetRequest;
 use App\Ledger\Holding;
 use App\Ledger\Holdings;
 use App\Ledger\TransactionSearch;
+use App\Ledger\Valuations;
 use App\Models\Asset;
+use App\Prices\PriceChart;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,17 +44,28 @@ class AssetController extends Controller
     }
 
     /**
-     * The asset's holding, its open parcels and its latest transactions.
+     * The asset's holding at its latest price, its price chart, its open
+     * parcels and its latest transactions. htmx asks for the chart alone
+     * when its range changes.
      */
-    public function show(Asset $asset, Holdings $holdings): View
+    public function show(Request $request, Asset $asset, Valuations $valuations, PriceChart $chart): View
     {
         Gate::authorize('view', $asset);
 
+        $range = ChartRange::fromInput($request->query('range'));
+        $points = ['asset' => $asset, 'range' => $range, 'points' => $chart->points($asset, $range)];
+
+        if ($request->header('HX-Target') === 'price-chart') {
+            return view('assets._chart', $points);
+        }
+
         $history = new TransactionSearch($asset->user, assetId: $asset->id);
+        $valuation = $valuations->forAsset($asset);
 
         return view('assets.show', [
-            'asset' => $asset,
-            'holding' => $holdings->forAsset($asset),
+            ...$points,
+            'valuation' => $valuation,
+            'holding' => $valuation->holding,
             'parcels' => $asset->parcels()->open()->orderBy('acquired_at')->orderBy('id')->get(),
             'transactions' => $history->query()->limit(self::HISTORY)->get(),
             'transactionCount' => $asset->transactions()->count(),

@@ -10,5 +10,6 @@ import htmx from 'htmx.org';
 import './asset-form';
 import './transaction-form';
 import './parcel-picker';
+import './price-chart';
 
 window.htmx = htmx;
