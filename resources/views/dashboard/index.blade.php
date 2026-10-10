@@ -1,4 +1,5 @@
-{{-- The portfolio at a glance. The chart and the holdings table are tasks 61 and 62. --}}
+{{-- The portfolio at a glance: the totals and its value over time. The holdings table is task 62. --}}
 <x-layouts.app title="Dashboard">
     @include('dashboard._totals')
+    @include('dashboard._chart')
 </x-layouts.app>

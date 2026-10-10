@@ -1,5 +1,5 @@
-// The price chart on the asset page. The server sends the points as [time, price] pairs, with
-// the price a decimal string: it becomes a float here only to be drawn.
+// The area charts: an asset's price and the portfolio's value. The server sends the points as
+// [time, amount] pairs, with the amount a decimal string: it becomes a float here only to be drawn.
 const charts = new Map();
 let library;
 
@@ -38,7 +38,7 @@ const draw = async (element) => {
         colors: [colour],
         series: [{
             name: element.dataset.label,
-            data: JSON.parse(element.dataset.points).map(([at, price]) => [at, Number(price)]),
+            data: JSON.parse(element.dataset.points).map(([at, amount]) => [at, Number(amount)]),
         }],
         dataLabels: { enabled: false },
         stroke: { width: 2, curve: 'straight' },
@@ -62,7 +62,7 @@ const refresh = () => {
         }
     });
 
-    document.querySelectorAll('[data-price-chart]:not([data-drawn])').forEach((element) => {
+    document.querySelectorAll('[data-chart]:not([data-drawn])').forEach((element) => {
         element.dataset.drawn = 'true';
         draw(element);
     });

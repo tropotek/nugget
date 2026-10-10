@@ -1,6 +1,6 @@
 {{--
     The asset's price chart and its range buttons. Sent alone when htmx asks for #price-chart.
-    The buttons are boosted: they swap this element and push the URL. price-chart.js draws it.
+    The buttons are boosted: they swap this element and push the URL. chart.js draws it.
     $points: [time, bid] pairs from App\Prices\PriceChart.
 --}}
 <div class="card" id="price-chart" hx-boost="true" hx-target="#price-chart" hx-swap="outerHTML" hx-push-url="true">
@@ -17,7 +17,7 @@
         </div>
 
         @if ($points)
-            <div class="apex-charts" data-price-chart data-points="{{ json_encode($points) }}"
+            <div class="apex-charts" data-chart data-points="{{ json_encode($points) }}"
                 data-times="{{ $range->isIntraday() ? 'true' : 'false' }}" data-label="AUD per {{ $asset->unit }}"></div>
         @else
             <p class="text-muted mb-0">No prices in this range.</p>

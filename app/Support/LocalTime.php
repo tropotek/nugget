@@ -20,4 +20,14 @@ class LocalTime
 
         return CarbonImmutable::instance($date)->setTimezone($user->timezone ?? User::DEFAULT_TIMEZONE);
     }
+
+    /**
+     * The moment as a chart wants it: the user's clock time read as UTC, in
+     * milliseconds. A chart that draws its axis in UTC then shows the
+     * user's dates and times.
+     */
+    public static function asUtcMs(DateTimeInterface $date, ?User $user = null): int
+    {
+        return CarbonImmutable::parse(self::of($date, $user)->format('Y-m-d H:i:s'), 'UTC')->getTimestampMs();
+    }
 }

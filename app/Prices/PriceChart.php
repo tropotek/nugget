@@ -32,10 +32,7 @@ class PriceChart
 
         if ($range->isIntraday()) {
             return $asset->prices()->intraday($from, $now)->get()
-                ->map(fn (Price $price) => [
-                    CarbonImmutable::parse(LocalTime::of($price->at, $owner)->format('Y-m-d H:i:s'), 'UTC')->getTimestampMs(),
-                    (string) $price->bid,
-                ])
+                ->map(fn (Price $price) => [LocalTime::asUtcMs($price->at, $owner), (string) $price->bid])
                 ->all();
         }
 

@@ -320,7 +320,7 @@ class AssetPageTest extends TestCase
         $this->get($this->url().'?range=48h')
             ->assertSee('id="price-chart"', false)
             ->assertSee('No prices in this range.')
-            ->assertDontSee('data-price-chart', false);
+            ->assertDontSee('data-chart', false);
     }
 
     public function test_htmx_is_sent_the_chart_alone(): void
@@ -331,7 +331,7 @@ class AssetPageTest extends TestCase
         $this->get($this->url().'?range=1y', ['HX-Request' => 'true', 'HX-Target' => 'price-chart'])
             ->assertOk()
             ->assertSee('id="price-chart"', false)
-            ->assertSee('data-price-chart', false)
+            ->assertSee('data-chart', false)
             ->assertDontSee('page-title', false)
             ->assertDontSee('Units held');
     }

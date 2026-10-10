@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ChartRange;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\Price;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -142,5 +144,87 @@ class DashboardTest extends TestCase
         $bitcoin->prices()->update(['bid' => '175.00000000']);
 
         $this->get('/', ['HX-Request' => 'true', 'HX-Target' => 'dashboard-totals'])->assertSee('$350.00')->assertDontSee('$300.00');
+    }
+
+    // The value chart
+
+    public function test_the_chart_has_the_portfolios_value_on_each_day_of_the_last_month(): void
+    {
+        $bitcoin = $this->holding('Bitcoin', '2', '100', '150');
+        Transaction::factory()->for($bitcoin)->buy('1', '100')->create(['occurred_at' => '2025-07-20 02:00:00']);
+        Price::factory()->for($bitcoin)->day('2025-06-30')->quoted('90', '90')->create();
+        Price::factory()->for($bitcoin)->day('2025-07-10')->quoted('100', '100')->create();
+        Price::factory()->for($bitcoin)->day('2025-07-25')->quoted('120', '120')->create();
+        $this->holding('Coin collection', '1', '5000', '9000', ['in_total' => false]);
+
+        // 2 held on 10 July and 3 from the 20th: the units of the day, not today's.
+        $points = [
+            [Price::day('2025-07-10')->getTimestampMs(), '200.00'],
+            [Price::day('2025-07-25')->getTimestampMs(), '360.00'],
+            [Price::day('2025-08-01')->getTimestampMs(), '450.00'],
+        ];
+
+        $this->get('/')
+            ->assertOk()
+            ->assertViewHas('points', $points)
+            ->assertViewHas('range', ChartRange::Month)
+            ->assertSee('id="value-chart"', false)
+            ->assertSee('data-points="'.e(json_encode($points)).'"', false)
+            ->assertSee('data-times="false"', false)
+            ->assertSee('href="'.e(route('dashboard', ['range' => '1y'])).'"', false)
+            ->assertSeeInOrder(['Value', '48h', '1m', '1y', 'All']);
+    }
+
+    public function test_the_chart_reaches_back_as_far_as_its_range(): void
+    {
+        $bitcoin = $this->holding('Bitcoin', '2', '100', '150');
+        Price::factory()->for($bitcoin)->day('2023-01-01')->create();
+        Price::factory()->for($bitcoin)->day('2024-08-01')->create();
+
+        $count = fn (int $expected) => fn (array $points) => count($points) === $expected;
+
+        $this->get('/?range=1m')->assertViewHas('points', $count(1));
+        $this->get('/?range=1y')->assertViewHas('points', $count(2));
+        $this->get('/?range=all')->assertViewHas('points', $count(3));
+        $this->get('/?range=nonsense')->assertOk()->assertViewHas('range', ChartRange::Month);
+    }
+
+    public function test_the_48_hour_chart_has_the_intraday_values_at_the_users_clock_time(): void
+    {
+        $bitcoin = $this->holding('Bitcoin', '2', '100', '150');
+        Price::factory()->for($bitcoin)->at('2025-07-30 01:55:00')->quoted('100', '100')->create();
+        Price::factory()->for($bitcoin)->at('2025-07-31 02:00:00')->quoted('110', '110')->create();
+        Price::factory()->for($bitcoin)->at('2025-08-01 02:00:00')->quoted('120', '120')->create();
+
+        // 02:00 UTC is midday in Melbourne.
+        $midday = fn (string $date) => CarbonImmutable::parse("{$date} 12:00:00", 'UTC')->getTimestampMs();
+
+        $this->get('/?range=48h')
+            ->assertViewHas('points', [[$midday('2025-07-31'), '220.00'], [$midday('2025-08-01'), '240.00']])
+            ->assertSee('data-times="true"', false);
+    }
+
+    public function test_a_chart_with_no_prices_says_so(): void
+    {
+        $this->get('/')->assertSee('id="value-chart"', false)->assertSee('No prices in this range.')->assertDontSee('data-chart', false);
+    }
+
+    public function test_htmx_is_sent_the_chart_alone(): void
+    {
+        $this->holding('Bitcoin', '2', '100', '150');
+
+        $this->get('/?range=1y', ['HX-Request' => 'true', 'HX-Target' => 'value-chart'])
+            ->assertOk()
+            ->assertSee('id="value-chart"', false)
+            ->assertSee('data-chart', false)
+            ->assertDontSee('page-title', false)
+            ->assertDontSee('dashboard-totals');
+    }
+
+    public function test_the_totals_refresh_does_not_carry_the_chart(): void
+    {
+        $this->holding('Bitcoin', '2', '100', '150');
+
+        $this->get('/', ['HX-Request' => 'true', 'HX-Target' => 'dashboard-totals'])->assertDontSee('value-chart');
     }
 }
