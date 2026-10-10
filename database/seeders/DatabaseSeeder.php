@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\Role;
 use App\Enums\TransactionSource;
+use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\Transaction;
@@ -102,6 +103,11 @@ class DatabaseSeeder extends Seeder
         $this->history($membersBitcoin, TransactionSource::Exchange, [
             ['2026-01-05 02:00', 'buy', '0.01', '150000', '12.75'],
         ]);
+
+        // Parcels and disposals are never seeded by hand: they are worked out from the ledger above.
+        foreach ([$admin, $member] as $user) {
+            $user->assets()->get()->each(fn (Asset $asset) => app(ParcelMatcher::class)->rematch($asset));
+        }
     }
 
     /**

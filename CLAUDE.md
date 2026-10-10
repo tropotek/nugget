@@ -40,6 +40,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 ## Layout
 
 - `app/`: application code, `App\` namespace.
+- `app/Ledger/`: the calculations on the ledger, starting with the parcel matcher.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
@@ -60,7 +61,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
 - Holdings are derived from the transaction ledger, never stored.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.
-- Parcels and disposals are worked out from the transactions. Only the parcel matcher writes them; nothing else creates, edits or deletes one.
+- Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one. After any change to an asset's transactions, call `rematch($asset)`: it rebuilds that asset and the same user's other assets with its symbol and unit, which transfers join.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
 - A page is a Blade view wrapped in `<x-layouts.app title="…">` (or `<x-layouts.guest>`). The title is both the heading and the browser title; an `actions` slot puts buttons beside the heading.

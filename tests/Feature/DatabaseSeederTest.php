@@ -8,7 +8,9 @@ use App\Enums\Role;
 use App\Enums\TransactionSource;
 use App\Enums\TransactionType;
 use App\Models\Asset;
+use App\Models\Disposal;
 use App\Models\Exchange;
+use App\Models\Parcel;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Decimal;
@@ -186,6 +188,41 @@ class DatabaseSeederTest extends TestCase
         $this->runSeeder();
 
         $this->assertSame($count, Transaction::count());
+    }
+
+    public function test_the_parcels_and_disposals_are_matched_from_the_seeded_ledger(): void
+    {
+        $this->runSeeder();
+
+        foreach (Asset::with('transactions', 'parcels')->get() as $asset) {
+            $this->assertTrue(
+                Decimal::sum($asset->parcels->pluck('units_remaining'))->equals(Decimal::sum($asset->transactions->map->signedUnits())),
+                "{$asset->name}: the parcels do not add up to the ledger",
+            );
+        }
+
+        $admin = User::where('email', 'admin@example.com')->sole();
+        $wallet = $admin->assets()->where('name', 'Bitcoin cold wallet')->sole();
+
+        // The transfer carried the dates of the two buys it came from.
+        $this->assertSame(
+            ['2024-08-05', '2024-11-18'],
+            $wallet->parcels()->orderBy('acquired_at')->get()->map(fn (Parcel $parcel) => $parcel->acquired_at->toDateString())->all(),
+        );
+
+        $this->assertTrue(Disposal::where('long_held', true)->exists());
+        $this->assertTrue(Disposal::where('long_held', false)->exists());
+        $this->assertTrue(Disposal::get()->contains(fn (Disposal $disposal) => $disposal->cost_base->isZero()));
+    }
+
+    public function test_seeding_again_leaves_the_same_parcels_and_disposals(): void
+    {
+        $this->runSeeder();
+        $counts = [Parcel::count(), Disposal::count()];
+
+        $this->runSeeder();
+
+        $this->assertSame($counts, [Parcel::count(), Disposal::count()]);
     }
 
     public function test_it_seeds_nothing_in_production(): void
