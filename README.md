@@ -15,6 +15,7 @@ cp .env.example .env
 docker compose up -d                                  # builds the image, installs PHP and Node packages
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
+docker compose exec app php artisan nugget:create-admin you@example.com   # the first admin
 docker compose exec app composer test                 # run the test suite
 ```
 

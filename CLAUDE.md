@@ -16,6 +16,7 @@ There is no PHP with SQLite or Composer on the host. Everything runs in the dev 
 docker compose up -d                              # app, vite, scheduler, mailpit
 docker compose exec app composer install
 docker compose exec app php artisan migrate
+docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -61,4 +62,5 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Flash a message with `->with('success' | 'error' | 'warning' | 'info', '…')`. The layouts show it.
 - jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
+- A user's `role` (`App\Enums\Role`: admin or member) is not mass assignable; set it with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
 - Run Pint before committing.
