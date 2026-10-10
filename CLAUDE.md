@@ -61,6 +61,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `resources/scss/`: `app.scss` is the entry (Bootstrap, the Minton default skin, then Nugget's styles) and `icons.scss` the icon fonts. `config/default/` and `custom/` are lifted from Minton (`~/Projects/Dev/Minton/Minton/resources/scss`).
 - `resources/js/`: `app.js` is the entry. `minton/` holds the template's own scripts; the rest are Nugget's, one small script per form, plus htmx.
 - `resources/fonts/`, `resources/images/`: icon fonts and images the SCSS refers to.
+- `app/Mcp/`: the MCP server and its tools.
 - `tests/Feature`, `tests/Unit`: PHPUnit tests.
 - `_notes/`: local planning docs, gitignored.
 - `version.md`: the app version.
@@ -122,6 +123,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
 - The JSON API is `routes/api.php`: the `/api/v1` group, GET routes only, reached with a Sanctum personal access token that has the `read` ability and never with the web session. Put an endpoint inside that group. Its data is worked out by a class in `App\Api` that returns a plain array for one user, built on the code the screens use; the controller only wraps it in `data`. Write values with `App\Api\Format`: amounts as decimal strings, never JSON numbers, and dates as ISO 8601 in the user's timezone. No response holds an exchange key or secret. Errors are JSON. Tokens are made and revoked on the profile page and shown once.
+- The MCP server is `App\Mcp\NuggetServer` at `/mcp` (`routes/ai.php`), behind the API's own middleware and tokens. A tool in `App\Mcp\Tools` is read-only, returns `Response::structured()` of the same `App\Api` class as its endpoint, and says in its description what each figure is and its unit. There are no write tools. To add one, add its class to the server's `$tools` and a test that holds it to its endpoint.
 - Every page needs a signed-in user: put its route inside the `auth` group in `routes/web.php`. The login and password reset routes are in `routes/auth.php`. There is no registration.
 - Login and password recovery are throttled per email and IP address together, with the limits in `config/nugget.php`. Recovery and reset answer the same whether or not the email has an account; keep it that way when changing them.
 - Dates are stored in UTC and shown in the reader's timezone. In a view use `<x-date :value="…" />` (it takes a `format`); elsewhere use `App\Support\LocalTime::of($date)`. Never format a stored date directly.

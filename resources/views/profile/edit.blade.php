@@ -110,6 +110,13 @@
                         it cannot change the ledger, and it never sees an exchange key or secret. Revoke one and it stops working at once.
                     </p>
 
+                    @if (Route::has('mcp'))
+                        <p class="text-muted">
+                            To let Claude read them, register the MCP server with Claude Code, with a token in place of <code>YOUR-TOKEN</code>:<br>
+                            <code>claude mcp add --transport http nugget {{ url('/mcp') }} --header "Authorization: Bearer YOUR-TOKEN"</code>
+                        </p>
+                    @endif
+
                     @if (session('api_token'))
                         <div class="alert alert-success" role="alert" id="new-api-token">
                             <div class="mb-1"><strong>Your new token.</strong> Copy it now: it is not shown again.</div>

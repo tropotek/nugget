@@ -48,7 +48,7 @@ class ApiTokenTest extends TestCase
     {
         $this->actingAs($this->user)->get('/profile')
             ->assertOk()
-            ->assertSeeInOrder(['id="api-tokens"', 'API tokens', url('/api/v1'), 'Make a token', 'No tokens yet.'], false)
+            ->assertSeeInOrder(['id="api-tokens"', 'API tokens', url('/api/v1'), 'claude mcp add --transport http nugget '.url('/mcp'), 'Make a token', 'No tokens yet.'], false)
             ->assertDontSee('new-api-token');
     }
 
