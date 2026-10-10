@@ -43,7 +43,8 @@ return [
             'database' => $sqlitePath(env('DB_DATABASE', 'data/nugget.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            // The app and the scheduler both write. A writer waits this long (ms) for the other's lock.
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
             'journal_mode' => env('DB_JOURNAL_MODE', 'wal'),
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',

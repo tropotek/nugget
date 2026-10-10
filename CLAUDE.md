@@ -41,6 +41,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
 - `resources/views/components/layouts/`: the page layouts. `app` is the signed-in shell (top bar, sidebar, page title, flash messages, footer) and `guest` the card used by the login pages; the rest are their parts.
+- `/up` (`HealthController`, `App\Support\HealthStatus`): the health check the containers poll. 200 with the version when the database accepts a write, 503 otherwise.
 - `config/navigation.php`: the sidebar menu, read by `App\Support\Navigation`.
 - `resources/scss/`: `app.scss` is the entry (Bootstrap, the Minton default skin, then Nugget's styles) and `icons.scss` the icon fonts. `config/default/` and `custom/` are lifted from Minton (`~/Projects/Dev/Minton/Minton/resources/scss`).
 - `resources/js/`: `app.js` is the entry. `minton/` holds the template's own scripts.
