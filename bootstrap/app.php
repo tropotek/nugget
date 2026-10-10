@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [ApplySettings::class, EnsureUserIsActive::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // An exchange's key and secret are not kept in the session when a form is refused.
+        $exceptions->dontFlash(['api_key', 'secret']);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

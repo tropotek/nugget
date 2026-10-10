@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,8 @@ use Tests\TestCase;
 class BtcMarketsTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const BALANCES = 'https://api.btcmarkets.net/v3/accounts/me/balances';
 
     private const TICKER = 'https://api.btcmarkets.net/v3/markets/BTC-AUD/ticker';
 
@@ -123,5 +126,58 @@ class BtcMarketsTest extends TestCase
         Http::fake(['https://btcmarkets.test/v3/markets/BTC-AUD/ticker' => Http::response($this->recorded('ticker-btc-aud'))]);
 
         $this->assertSame('118440.39', (string) $this->driver->quote('BTC-AUD')->bid);
+    }
+
+    // Signed calls
+
+    public function test_checking_the_connection_signs_the_call_with_the_key_and_secret(): void
+    {
+        $this->travelTo('2025-06-30 03:07:30.123');
+        Http::fake([self::BALANCES => Http::response('[]')]);
+        $driver = new BtcMarkets(Exchange::factory()->create(['api_key' => 'my-key', 'secret' => base64_encode('my-secret')]));
+
+        $driver->checkConnection();
+
+        // The method, the path from the root, and the time in milliseconds.
+        $signature = base64_encode(hash_hmac('sha512', 'GET/v3/accounts/me/balances1751252850123', 'my-secret', true));
+
+        Http::assertSent(fn (Request $request) => $request->url() === self::BALANCES
+            && $request->method() === 'GET'
+            && $request->header('BM-AUTH-APIKEY') === ['my-key']
+            && $request->header('BM-AUTH-TIMESTAMP') === ['1751252850123']
+            && $request->header('BM-AUTH-SIGNATURE') === [$signature]);
+    }
+
+    public function test_the_secret_itself_is_never_sent(): void
+    {
+        Http::fake([self::BALANCES => Http::response('[]')]);
+        $secret = base64_encode('my-secret');
+
+        (new BtcMarkets(Exchange::factory()->create(['secret' => $secret])))->checkConnection();
+
+        Http::assertSent(fn (Request $request) => ! str_contains(json_encode($request->headers()).$request->url().$request->body(), $secret));
+    }
+
+    public function test_a_refused_key_throws(): void
+    {
+        Http::fake([self::BALANCES => Http::response($this->recorded('invalid-api-key'), 401)]);
+
+        $this->expectException(RequestException::class);
+
+        (new BtcMarkets(Exchange::factory()->create(['secret' => base64_encode('my-secret')])))->checkConnection();
+    }
+
+    public function test_a_missing_key_or_a_secret_that_is_not_base64_throws_before_any_call(): void
+    {
+        foreach ([['api_key' => null], ['secret' => null], ['secret' => 'not base64!']] as $bad) {
+            try {
+                (new BtcMarkets(Exchange::factory()->create($bad)))->checkConnection();
+                $this->fail('It should have thrown.');
+            } catch (RuntimeException $e) {
+                $this->assertStringContainsString('API key and a secret', $e->getMessage());
+            }
+        }
+
+        Http::assertNothingSent();
     }
 }

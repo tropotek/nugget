@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\Fakes\PlainDriver;
 use Tests\TestCase;
+use UnexpectedValueException;
 
 /**
  * The kept list of an exchange's markets, against a recorded response of
@@ -76,7 +77,7 @@ class MarketsTest extends TestCase
     {
         Http::fake([self::URL => Http::response('{"code":"Oops"}')]);
 
-        $this->expectException(\UnexpectedValueException::class);
+        $this->expectException(UnexpectedValueException::class);
 
         (new BtcMarkets($this->exchange))->markets();
     }

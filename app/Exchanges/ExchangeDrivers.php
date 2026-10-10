@@ -2,6 +2,9 @@
 
 namespace App\Exchanges;
 
+use App\Exchanges\Contracts\ChecksConnection;
+use App\Exchanges\Contracts\ListsMarkets;
+use App\Exchanges\Contracts\QuotesPrices;
 use App\Exchanges\Drivers\BtcMarkets;
 use App\Models\Exchange;
 use InvalidArgumentException;
@@ -19,6 +22,13 @@ class ExchangeDrivers
     /** @var array<string, class-string<ExchangeDriver>> by the name stored in `exchanges.driver` */
     public const DRIVERS = [
         'btcmarkets' => BtcMarkets::class,
+    ];
+
+    /** @var array<class-string, string> what each interface in Contracts lets an exchange do, for its owner to read */
+    public const CAPABILITIES = [
+        QuotesPrices::class => 'Prices',
+        ListsMarkets::class => 'Market list',
+        ChecksConnection::class => 'Connection test',
     ];
 
     /** @var array<int, ExchangeDriver> by exchange id */
@@ -57,5 +67,31 @@ class ExchangeDrivers
         asort($names);
 
         return $names;
+    }
+
+    /**
+     * What a driver can do, as the labels in CAPABILITIES. None for a name with no driver.
+     *
+     * @return list<string>
+     */
+    public function capabilities(string $driver): array
+    {
+        $class = $this->drivers[$driver] ?? null;
+
+        return $class === null ? [] : array_values(array_filter(
+            self::CAPABILITIES,
+            fn (string $contract) => is_subclass_of($class, $contract),
+            ARRAY_FILTER_USE_KEY,
+        ));
+    }
+
+    /**
+     * Whether a driver of that name can do what an interface in Contracts says.
+     *
+     * @param  class-string  $contract
+     */
+    public function can(string $driver, string $contract): bool
+    {
+        return isset($this->drivers[$driver]) && is_subclass_of($this->drivers[$driver], $contract);
     }
 }

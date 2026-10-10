@@ -2,6 +2,7 @@
 
 namespace App\Exchanges\Drivers;
 
+use App\Exchanges\Contracts\ChecksConnection;
 use App\Exchanges\Contracts\ListsMarkets;
 use App\Exchanges\Contracts\QuotesPrices;
 use App\Exchanges\ExchangeDriver;
@@ -10,13 +11,14 @@ use App\Models\Exchange;
 use App\Prices\Quote;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use UnexpectedValueException;
 
 /**
  * BTC Markets, by its v3 REST API (https://docs.btcmarkets.net). Amounts
  * come as strings, so nothing passes through a float.
  */
-class BtcMarkets implements ExchangeDriver, ListsMarkets, QuotesPrices
+class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, QuotesPrices
 {
     /** @var array<string, Quote> the tickers read so far, by market */
     private array $quotes = [];
@@ -59,6 +61,14 @@ class BtcMarkets implements ExchangeDriver, ListsMarkets, QuotesPrices
         }, $markets);
     }
 
+    /**
+     * Reads the account's balances, the plainest call that needs the key.
+     */
+    public function checkConnection(): void
+    {
+        $this->signed('GET', 'accounts/me/balances')->get('accounts/me/balances')->throw();
+    }
+
     private function ticker(string $market): Quote
     {
         $ticker = $this->public()->get('markets/'.rawurlencode($market).'/ticker')->throw()->json();
@@ -75,5 +85,34 @@ class BtcMarkets implements ExchangeDriver, ListsMarkets, QuotesPrices
     private function public(): PendingRequest
     {
         return Http::baseUrl(config('nugget.exchanges.btcmarkets.url'))->acceptJson()->timeout(10);
+    }
+
+    /**
+     * A request for the account's own data, signed with its key and secret.
+     *
+     * The signature is the base64 of an HMAC-SHA512, keyed with the secret
+     * decoded from base64, over the method, the path from the API's root
+     * ("/v3/orders"), the time in milliseconds and, for a POST, the JSON body.
+     * A query string is not signed.
+     *
+     * @param  string  $path  as given to the request, with no query string
+     */
+    private function signed(string $method, string $path, string $body = ''): PendingRequest
+    {
+        $key = (string) $this->exchange->api_key;
+        $secret = base64_decode((string) $this->exchange->secret, true);
+
+        if ($key === '' || $secret === false || $secret === '') {
+            throw new RuntimeException('The exchange needs an API key and a secret, and the secret is the base64 text BTC Markets gives.');
+        }
+
+        $root = rtrim((string) parse_url(config('nugget.exchanges.btcmarkets.url'), PHP_URL_PATH), '/');
+        $timestamp = (string) now()->getTimestampMs();
+
+        return $this->public()->withHeaders([
+            'BM-AUTH-APIKEY' => $key,
+            'BM-AUTH-TIMESTAMP' => $timestamp,
+            'BM-AUTH-SIGNATURE' => base64_encode(hash_hmac('sha512', "{$method}{$root}/{$path}{$timestamp}{$body}", $secret, true)),
+        ]);
     }
 }
