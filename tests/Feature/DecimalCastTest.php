@@ -112,6 +112,7 @@ class DecimalCastTest extends TestCase
     public function test_the_cast_names_its_scales(): void
     {
         $this->assertSame(DecimalCast::class.':8', DecimalCast::units());
+        $this->assertSame(DecimalCast::class.':8', DecimalCast::price());
         $this->assertSame(DecimalCast::class.':2', DecimalCast::aud());
         $this->assertSame(DecimalCast::class.':4', DecimalCast::scale(4));
     }

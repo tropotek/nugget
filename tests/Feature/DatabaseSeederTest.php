@@ -5,9 +5,13 @@ namespace Tests\Feature;
 use App\Enums\AssetClass;
 use App\Enums\PricedBy;
 use App\Enums\Role;
+use App\Enums\TransactionSource;
+use App\Enums\TransactionType;
 use App\Models\Asset;
 use App\Models\Exchange;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Support\Decimal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -117,7 +121,7 @@ class DatabaseSeederTest extends TestCase
         $assets = User::where('email', 'admin@example.com')->sole()->assets;
 
         $this->assertEqualsCanonicalizing(
-            ['Bitcoin', 'Cardano', 'Gold bullion', 'Silver bullion', 'Prospected gold', 'Coin collection'],
+            ['Bitcoin', 'Bitcoin cold wallet', 'Cardano', 'Gold bullion', 'Silver bullion', 'Prospected gold', 'Coin collection'],
             $assets->pluck('name')->all(),
         );
         $this->assertEqualsCanonicalizing(
@@ -148,6 +152,42 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($count, Asset::count());
     }
 
+    public function test_the_assets_get_a_history_of_every_type_of_transaction(): void
+    {
+        $this->runSeeder();
+
+        $admin = User::where('email', 'admin@example.com')->sole();
+        $transactions = Transaction::whereIn('asset_id', $admin->assets()->pluck('id'))->get();
+
+        $this->assertEqualsCanonicalizing(
+            TransactionType::cases(),
+            $transactions->pluck('type')->unique()->values()->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            [TransactionSource::Manual, TransactionSource::Exchange],
+            $transactions->pluck('source')->unique()->values()->all(),
+        );
+
+        foreach ($admin->assets as $asset) {
+            $this->assertTrue($asset->transactions()->exists(), $asset->name);
+            $held = Decimal::sum($asset->transactions->map->signedUnits());
+            $this->assertFalse($held->isNegative(), "{$asset->name} is oversold");
+        }
+
+        $this->assertTrue($transactions->every(fn (Transaction $t) => $t->occurred_at->isPast()));
+        $this->assertTrue(Transaction::whereIn('asset_id', User::where('email', 'member@example.com')->sole()->assets()->pluck('id'))->exists());
+    }
+
+    public function test_seeding_again_adds_no_transactions(): void
+    {
+        $this->runSeeder();
+        $count = Transaction::count();
+
+        $this->runSeeder();
+
+        $this->assertSame($count, Transaction::count());
+    }
+
     public function test_it_seeds_nothing_in_production(): void
     {
         $this->app['env'] = 'production';
@@ -157,5 +197,6 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame(0, User::count());
         $this->assertSame(0, Exchange::count());
         $this->assertSame(0, Asset::count());
+        $this->assertSame(0, Transaction::count());
     }
 }

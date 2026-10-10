@@ -22,6 +22,9 @@ final class Decimal implements JsonSerializable, Stringable
     /** Decimal places kept for a number of units of an asset. */
     public const UNITS_SCALE = 8;
 
+    /** Decimal places kept for the AUD price of one unit. Two would not hold the price of a cheap coin. */
+    public const PRICE_SCALE = 8;
+
     /** Decimal places kept for an AUD total. */
     public const AUD_SCALE = 2;
 

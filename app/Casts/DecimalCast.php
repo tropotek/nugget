@@ -29,6 +29,14 @@ class DecimalCast implements CastsAttributes
     }
 
     /**
+     * The cast for the AUD price of one unit.
+     */
+    public static function price(): string
+    {
+        return self::scale(Decimal::PRICE_SCALE);
+    }
+
+    /**
      * The cast for an AUD total.
      */
     public static function aud(): string
