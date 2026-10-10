@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SaleParcelController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\ApplySettings;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -27,6 +28,11 @@ Route::middleware('auth')->group(function () {
 
     // The owner only, by OwnerPolicy.
     Route::resource('transactions', TransactionController::class)->except(['show']);
+
+    // The parcels a sale uses: picked by hand, or returned to the configured method.
+    Route::get('/transactions/{transaction}/parcels', [SaleParcelController::class, 'edit'])->name('transactions.parcels.edit');
+    Route::put('/transactions/{transaction}/parcels', [SaleParcelController::class, 'update'])->name('transactions.parcels.update');
+    Route::delete('/transactions/{transaction}/parcels', [SaleParcelController::class, 'destroy'])->name('transactions.parcels.destroy');
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

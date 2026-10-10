@@ -12,6 +12,7 @@ use App\Models\User;
 use Database\Factories\TransactionFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -581,5 +582,60 @@ class ParcelMatcherTest extends TestCase
         $this->rematch($perth);
 
         $this->assertTrue($this->disposals($sale)->sole()->long_held);
+    }
+
+    // The parcels a sale can be matched to
+
+    /**
+     * @return list<array{string, string, string}> each parcel's acquired day, units left and cost base left
+     */
+    private function openBefore(Transaction $sale): array
+    {
+        return app(ParcelMatcher::class)->openBefore($sale)
+            ->map(fn (Parcel $p) => [$p->acquired_at->toDateString(), (string) $p->units_remaining, $p->remainingCostBase()->toFixed(2)])
+            ->all();
+    }
+
+    public function test_the_parcels_open_before_a_sale_are_as_they_were_at_that_moment(): void
+    {
+        $this->add('2024-01-10', Transaction::factory()->buy('1', '100'));
+        $this->add('2024-02-10', Transaction::factory()->buy('2', '200'));
+        $first = $this->add('2024-03-10', Transaction::factory()->sell('0.5', '300'));
+        $this->add('2024-04-10', Transaction::factory()->adjust('-0.25'));
+        $second = $this->add('2024-05-10', Transaction::factory()->sell('1', '300'));
+        $this->add('2024-06-10', Transaction::factory()->buy('5', '250'));
+        $this->add('2024-07-10', Transaction::factory()->sell('1', '300'));
+        $this->rematch();
+
+        // Nothing has been used yet, and the later buy is not there.
+        $this->assertSame([['2024-01-10', '1', '100.00'], ['2024-02-10', '2', '400.00']], $this->openBefore($first));
+        // The first sale and the adjustment have used 0.75 of the first parcel.
+        $this->assertSame([['2024-01-10', '0.25', '25.00'], ['2024-02-10', '2', '400.00']], $this->openBefore($second));
+    }
+
+    public function test_reading_the_parcels_open_before_a_sale_changes_nothing(): void
+    {
+        $this->add('2024-01-10', Transaction::factory()->buy('1', '100'));
+        $sale = $this->add('2024-03-10', Transaction::factory()->sell('0.5', '300'));
+        $this->add('2024-04-10', Transaction::factory()->sell('0.25', '300'));
+        $this->rematch();
+        $rows = fn () => [DB::table('parcels')->get()->toJson(), DB::table('disposals')->get()->toJson()];
+        $before = $rows();
+
+        $this->openBefore($sale);
+
+        $this->assertSame($before, $rows());
+    }
+
+    public function test_the_parcels_open_before_a_sale_include_what_a_transfer_brought(): void
+    {
+        $wallet = Asset::factory()->for($this->asset->user)->create(['symbol' => $this->asset->symbol, 'unit' => $this->asset->unit]);
+        $this->add('2024-01-10', Transaction::factory()->buy('2', '100'));
+        $this->add('2024-02-10', Transaction::factory()->transferOut('1.5'));
+        $this->add('2024-02-10', Transaction::factory()->transferIn('1.5'), $wallet);
+        $sale = $this->add('2024-03-10', Transaction::factory()->sell('1', '300'), $wallet);
+        $this->rematch();
+
+        $this->assertSame([['2024-01-10', '1.5', '150.00']], $this->openBefore($sale));
     }
 }

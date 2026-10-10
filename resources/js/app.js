@@ -9,5 +9,6 @@ import htmx from 'htmx.org';
 
 import './asset-form';
 import './transaction-form';
+import './parcel-picker';
 
 window.htmx = htmx;

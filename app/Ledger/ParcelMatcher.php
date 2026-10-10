@@ -55,35 +55,74 @@ class ParcelMatcher
      */
     public function rematch(Asset $asset, ?ParcelMatching $method = null): void
     {
+        DB::transaction(fn () => $this->replay($asset, $method));
+    }
+
+    /**
+     * The parcels of a sale's asset that had units left at the moment before
+     * the sale, oldest first: what the sale can be matched to. The stored
+     * parcels cannot say, because they show what every later sale and
+     * transfer has left.
+     *
+     * The ledger is replayed up to the sale and the replay undone, so the
+     * parcels returned are not rows. Read them and never save them: their
+     * ids mean nothing.
+     *
+     * @return Collection<int, Parcel>
+     *
+     * @throws InsufficientUnits|InvalidParcelPick when the ledger before the sale cannot be matched
+     */
+    public function openBefore(Transaction $sale): Collection
+    {
+        DB::beginTransaction();
+
+        try {
+            return collect($this->replay($sale->asset, null, $sale)[$sale->asset_id]);
+        } finally {
+            DB::rollBack();
+        }
+    }
+
+    /**
+     * Throw the pool's parcels and disposals away and replay its ledger in
+     * time order: all of it, or the part before one transaction.
+     *
+     * @return array<int, list<Parcel>> the open parcels of each asset in the pool, oldest first
+     */
+    private function replay(Asset $asset, ?ParcelMatching $method = null, ?Transaction $before = null): array
+    {
         $method ??= ParcelMatching::from(Settings::get('parcel_matching'));
 
-        DB::transaction(function () use ($asset, $method) {
-            $assets = $this->pool($asset);
-            $this->clear($asset);
+        $assets = $this->pool($asset);
+        $this->clear($asset);
 
-            /** @var array<int, list<Parcel>> $open the open parcels of each asset, oldest first */
-            $open = $assets->map(fn () => [])->all();
+        $open = $assets->map(fn () => [])->all();
 
-            /** @var list<array{acquired_at: DateTimeInterface, units: Decimal, cost: Decimal, estimated: bool}> $inTransit */
-            $inTransit = [];
+        /** @var list<array{acquired_at: DateTimeInterface, units: Decimal, cost: Decimal, estimated: bool}> $inTransit */
+        $inTransit = [];
 
-            $transactions = Transaction::with('picks')->whereIn('asset_id', $assets->keys())->get();
+        $transactions = Transaction::with('picks')->whereIn('asset_id', $assets->keys())->get();
 
-            foreach ($this->inOrder($transactions) as $transaction) {
-                $transaction->setRelation('asset', $assets[$transaction->asset_id]);
-                $parcels = &$open[$transaction->asset_id];
-
-                match (true) {
-                    $transaction->type === TransactionType::TransferIn => $this->arrive($transaction, $parcels, $inTransit),
-                    $transaction->type === TransactionType::TransferOut => array_push($inTransit, ...$this->take($transaction, $parcels)),
-                    $transaction->type === TransactionType::Sell => $this->sell($transaction, $parcels, $method),
-                    $transaction->units->isNegative() => $this->take($transaction, $parcels),
-                    default => $this->open($parcels, $transaction, $transaction->occurred_at, $transaction->units, $transaction->total, $transaction->estimated),
-                };
-
-                unset($parcels);
+        foreach ($this->inOrder($transactions) as $transaction) {
+            if ($before && $transaction->is($before)) {
+                break;
             }
-        });
+
+            $transaction->setRelation('asset', $assets[$transaction->asset_id]);
+            $parcels = &$open[$transaction->asset_id];
+
+            match (true) {
+                $transaction->type === TransactionType::TransferIn => $this->arrive($transaction, $parcels, $inTransit),
+                $transaction->type === TransactionType::TransferOut => array_push($inTransit, ...$this->take($transaction, $parcels)),
+                $transaction->type === TransactionType::Sell => $this->sell($transaction, $parcels, $method),
+                $transaction->units->isNegative() => $this->take($transaction, $parcels),
+                default => $this->open($parcels, $transaction, $transaction->occurred_at, $transaction->units, $transaction->total, $transaction->estimated),
+            };
+
+            unset($parcels);
+        }
+
+        return $open;
     }
 
     /**

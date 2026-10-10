@@ -71,6 +71,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.
+- The stored parcels show what is left now. What a sale could use at its own moment comes from `ParcelMatcher::openBefore($sale)`, which replays the ledger up to the sale and rolls back: the parcels it returns are not rows, so read them and never save them. `App\Ledger\ParcelChoice::forSale()` turns them into the lines of the parcel picker.
 - The parcel matcher and the tax calculator are written test-first.
 - Real financial data (such as the BTC Markets CSV in tkbtc's `_notes/`) is never committed or copied into this repo. Tests use small anonymised fixtures.
 - A page is a Blade view wrapped in `<x-layouts.app title="…">` (or `<x-layouts.guest>`). The title is both the heading and the browser title; an `actions` slot puts buttons beside the heading.

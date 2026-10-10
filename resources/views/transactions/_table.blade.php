@@ -51,8 +51,11 @@
                         <td class="text-end">{{ $transaction->type->hasFee() ? '$'.$transaction->fee->format() : '' }}</td>
                         <td class="text-end">{{ $transaction->type->hasTotal() ? '$'.$transaction->total->format() : '' }}</td>
                         <td>{{ $transaction->source->label() }}</td>
-                        <td class="text-end">
-                            {{-- A full page load, not a swap of the table. --}}
+                        <td class="text-end text-nowrap">
+                            {{-- Full page loads, not swaps of the table. --}}
+                            @if ($transaction->type === App\Enums\TransactionType::Sell)
+                                <a href="{{ route('transactions.parcels.edit', $transaction) }}" hx-boost="false" class="btn btn-sm btn-light">Parcels</a>
+                            @endif
                             <a href="{{ route('transactions.edit', $transaction) }}" hx-boost="false" class="btn btn-sm btn-light">Edit</a>
                         </td>
                     </tr>

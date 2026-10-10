@@ -143,6 +143,15 @@
                 </div>
             </div>
 
+            @if ($editing && $transaction->type === App\Enums\TransactionType::Sell)
+                <div class="card">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <span class="text-muted">Parcels matched {{ $transaction->isHandMatched() ? 'by hand' : 'by: '.($transaction->matching?->label() ?? 'nothing yet') }}.</span>
+                        <a href="{{ route('transactions.parcels.edit', $transaction) }}" class="btn btn-light">Choose parcels</a>
+                    </div>
+                </div>
+            @endif
+
             @if ($editing && ! $locked)
                 <div class="card">
                     <div class="card-body d-flex align-items-center justify-content-between">
