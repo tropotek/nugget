@@ -71,4 +71,6 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A user's `role` (`App\Enums\Role`: admin or member) and `active` flag are not mass assignable; set them with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
 - Users are deactivated, never deleted. An inactive user cannot sign in or reset a password, and is told nothing that an unknown email would not be.
 - A model that belongs to a user implements `App\Models\Contracts\Owned`. That gives it `App\Policies\OwnerPolicy` with no policy class of its own: the owner only, with no admin bypass. Authorise every read and write of one with `Gate::authorize`.
+- An admin-editable setting is read with `Settings::get('key')` (`App\Facades\Settings`). To add one, add it to `definitions()` in `App\Support\Settings` with its default, type and rules, and a field to `resources/views/settings/edit.blade.php`. An unknown key throws.
+- A financial year is named by the year it ends in: 2025 is 2024–25.
 - Run Pint before committing.

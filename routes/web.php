@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Middleware\ApplySettings;
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -19,12 +22,18 @@ Route::middleware('auth')->group(function () {
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);
+
+    // Admin only, by the admin ability.
+    Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 });
 
-// The container health check. No session or cookies: it must answer before the first migration.
+// The container health check. No session, cookies or settings: it must answer before the first migration.
 Route::get('/up', HealthController::class)
     ->name('health')
     ->withoutMiddleware([
+        ApplySettings::class,
+        EnsureUserIsActive::class,
         EncryptCookies::class,
         AddQueuedCookiesToResponse::class,
         StartSession::class,

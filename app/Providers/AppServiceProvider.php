@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Contracts\Owned;
 use App\Models\User;
 use App\Policies\OwnerPolicy;
+use App\Support\Settings;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -16,7 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(Settings::class);
     }
 
     /**
