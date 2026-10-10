@@ -208,6 +208,20 @@ class DecimalTest extends TestCase
         $this->assertSame('12,345,678,901,234,567,890.10', Decimal::of('12345678901234567890.1')->format(2));
     }
 
+    public function test_it_formats_a_unit_price_with_the_places_a_small_one_needs(): void
+    {
+        $this->assertSame('151,300.00', Decimal::of('151300')->formatPrice());
+        $this->assertSame('1.00', Decimal::of('1')->formatPrice());
+        $this->assertSame('1.23', Decimal::of('1.23456')->formatPrice());
+        $this->assertSame('0.52', Decimal::of('0.52')->formatPrice());
+        $this->assertSame('0.50', Decimal::of('0.5')->formatPrice());
+        $this->assertSame('0.00', Decimal::of('0')->formatPrice());
+        $this->assertSame('0.666667', Decimal::of('0.666667')->formatPrice());
+        $this->assertSame('0.00001234', Decimal::of('0.00001234')->formatPrice());
+        $this->assertSame('0.33333333', Decimal::of('0.333333333333')->formatPrice());
+        $this->assertSame('-0.125', Decimal::of('-0.125')->formatPrice());
+    }
+
     public function test_it_is_a_string_in_json(): void
     {
         $this->assertSame('{"total":"1234.5"}', json_encode(['total' => Decimal::of('1234.50')]));

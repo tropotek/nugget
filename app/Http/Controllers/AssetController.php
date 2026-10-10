@@ -7,6 +7,7 @@ use App\Enums\PricedBy;
 use App\Http\Requests\AssetRequest;
 use App\Ledger\Holding;
 use App\Ledger\Holdings;
+use App\Ledger\TransactionSearch;
 use App\Models\Asset;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -16,6 +17,9 @@ use Illuminate\View\View;
 
 class AssetController extends Controller
 {
+    /** How many transactions the asset page shows. The transaction list has the rest. */
+    private const HISTORY = 25;
+
     /**
      * The user's assets with what they hold of each. Archived assets are
      * left off unless asked for.
@@ -33,6 +37,25 @@ class AssetController extends Controller
             'holdings' => $showArchived ? $all : $all->reject(fn (Holding $holding) => $holding->asset->archived),
             'archivedCount' => $all->filter(fn (Holding $holding) => $holding->asset->archived)->count(),
             'showArchived' => $showArchived,
+        ]);
+    }
+
+    /**
+     * The asset's holding, its open parcels and its latest transactions.
+     */
+    public function show(Asset $asset, Holdings $holdings): View
+    {
+        Gate::authorize('view', $asset);
+
+        $history = new TransactionSearch($asset->user, assetId: $asset->id);
+
+        return view('assets.show', [
+            'asset' => $asset,
+            'holding' => $holdings->forAsset($asset),
+            'parcels' => $asset->parcels()->open()->orderBy('acquired_at')->orderBy('id')->get(),
+            'transactions' => $history->query()->limit(self::HISTORY)->get(),
+            'transactionCount' => $asset->transactions()->count(),
+            'history' => $history,
         ]);
     }
 

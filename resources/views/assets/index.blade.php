@@ -24,7 +24,7 @@
                             @php($asset = $holding->asset)
                             <tr>
                                 <td>
-                                    {{ $asset->name }}
+                                    <a href="{{ route('assets.show', $asset) }}">{{ $asset->name }}</a>
                                     <span class="text-muted ms-1">{{ $asset->symbol }}</span>
                                 </td>
                                 <td>{{ $asset->class->label() }}</td>

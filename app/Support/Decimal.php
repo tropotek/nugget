@@ -177,6 +177,22 @@ final class Decimal implements JsonSerializable, Stringable
     }
 
     /**
+     * A unit price for reading: two places, or as many as it has, up to
+     * eight, when it is under a dollar. A cheap coin is "0.00001234", not "0.00".
+     */
+    public function formatPrice(): string
+    {
+        if (! $this->abs()->lessThan(1)) {
+            return $this->format(self::AUD_SCALE);
+        }
+
+        $exact = (string) $this->round(self::PRICE_SCALE);
+        $places = strlen((string) strstr($exact, '.')) - 1;
+
+        return $this->format(max(self::AUD_SCALE, $places));
+    }
+
+    /**
      * The exact value with no padding: "1.50" prints as "1.5".
      */
     public function __toString(): string

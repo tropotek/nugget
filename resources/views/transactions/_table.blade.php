@@ -47,7 +47,7 @@
                             @endif
                         </td>
                         <td class="text-end text-nowrap">{{ $transaction->signedUnits() }} {{ $transaction->asset->unit }}</td>
-                        <td class="text-end">{{ $transaction->type->hasPrice() ? '$'.$transaction->unit_price->format() : '' }}</td>
+                        <td class="text-end">{{ $transaction->type->hasPrice() ? '$'.$transaction->unit_price->formatPrice() : '' }}</td>
                         <td class="text-end">{{ $transaction->type->hasFee() ? '$'.$transaction->fee->format() : '' }}</td>
                         <td class="text-end">{{ $transaction->type->hasTotal() ? '$'.$transaction->total->format() : '' }}</td>
                         <td>{{ $transaction->source->label() }}</td>

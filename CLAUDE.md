@@ -60,6 +60,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 - Money and unit values are never floats. They are `App\Support\Decimal` objects, made with `Decimal::of('1.5')` from a string or an integer; a float throws.
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
+- Show a unit price or a cost per unit with `$decimal->formatPrice()`, which keeps the places a price under a dollar needs. Show an AUD total with `format()`.
 - Holdings are derived from the transaction ledger, never stored. Read them with `App\Ledger\Holdings` (`forUser`, `forAsset`), which gives an `App\Ledger\Holding` per asset: units, cost base and average cost. It does no authorising.
 - An asset's symbol and unit decide which assets transfers join, so they are fixed once it has a transaction (`$asset->hasTransactions()`), and it can then be archived but not deleted. An archived asset is left off the lists; its ledger and its holding are unchanged.
 - An asset's price source is one choice, `App\Enums\PricedBy` (exchange, feed or none), read with `$asset->pricedBy()`. A form saves only the chosen source's fields and nulls the others.

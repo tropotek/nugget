@@ -23,8 +23,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
-    // The owner only, by OwnerPolicy. An asset's own page is still to come.
-    Route::resource('assets', AssetController::class)->except(['show']);
+    // The owner only, by OwnerPolicy.
+    Route::resource('assets', AssetController::class);
 
     // The owner only, by OwnerPolicy.
     Route::resource('transactions', TransactionController::class)->except(['show']);
