@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\ApplySettings;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -23,6 +24,9 @@ Route::middleware('auth')->group(function () {
 
     // The owner only, by OwnerPolicy. An asset's own page is still to come.
     Route::resource('assets', AssetController::class)->except(['show']);
+
+    // The owner only, by OwnerPolicy. The list of transactions is still to come.
+    Route::resource('transactions', TransactionController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

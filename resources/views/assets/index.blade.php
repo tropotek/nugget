@@ -55,7 +55,8 @@
                                         <span class="badge bg-light text-dark">Not in total</span>
                                     @endunless
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end text-nowrap">
+                                    <a href="{{ route('transactions.create', ['asset' => $asset->id]) }}" class="btn btn-sm btn-light">Add transaction</a>
                                     <a href="{{ route('assets.edit', $asset) }}" class="btn btn-sm btn-light">Edit</a>
                                 </td>
                             </tr>

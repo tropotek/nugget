@@ -44,6 +44,11 @@ class Ledger
         return DB::transaction(function () use ($transaction, $attributes) {
             $transaction->update($attributes);
 
+            // Picks belong to a sale. Left behind, they would come back if the type did.
+            if ($transaction->type !== TransactionType::Sell) {
+                $transaction->picks()->delete();
+            }
+
             $this->matcher->rematch($transaction->asset);
 
             return $transaction;

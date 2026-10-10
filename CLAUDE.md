@@ -64,6 +64,10 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - An asset's symbol and unit decide which assets transfers join, so they are fixed once it has a transaction (`$asset->hasTransactions()`), and it can then be archived but not deleted. An archived asset is left off the lists; its ledger and its holding are unchanged.
 - An asset's price source is one choice, `App\Enums\PricedBy` (exchange, feed or none), read with `$asset->pricedBy()`. A form saves only the chosen source's fields and nulls the others.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.
+- An amount typed into a form is validated with `App\Rules\Amount` (a plain decimal string with a limit on its places) and turned into a `Decimal`. Any arithmetic on amounts in JavaScript is done in `BigInt`, never in floats, and only to preview what the server works out.
+- Which amounts a transaction type carries is on `TransactionType` (`hasPrice()`, `hasFee()`, `hasTotal()`); the rest are saved as zero. `Transaction::totalOf()` is the total when none is given.
+- A transaction from an exchange is locked (`$transaction->isLocked()`): only its notes change and it is never deleted by hand.
+- A date and time typed into a form is in the user's timezone: parse it with the user's `timezone` and store it in UTC.
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.

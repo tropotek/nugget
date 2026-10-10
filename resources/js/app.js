@@ -5,3 +5,4 @@ import './minton/app';
 import './minton/layout';
 
 import './asset-form';
+import './transaction-form';

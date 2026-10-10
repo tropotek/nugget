@@ -108,6 +108,33 @@ class Transaction extends Model implements Owned
         return $this->asset->user_id;
     }
 
+    /**
+     * A trade fetched from an exchange is the exchange's record: only its notes change.
+     */
+    public function isLocked(): bool
+    {
+        return $this->source === TransactionSource::Exchange;
+    }
+
+    /**
+     * The total a transaction has when none is given: the cost with the fee
+     * for a buy, the proceeds less the fee for a sale, the market value of a
+     * reward, and nothing for the rest.
+     */
+    public static function totalOf(TransactionType $type, Decimal $units, Decimal $unitPrice, Decimal $fee): Decimal
+    {
+        $value = $units->mul($unitPrice);
+
+        $total = match ($type) {
+            TransactionType::Buy => $value->add($fee),
+            TransactionType::Sell => $value->sub($fee),
+            TransactionType::Reward => $value,
+            default => Decimal::zero(),
+        };
+
+        return $total->round(Decimal::AUD_SCALE);
+    }
+
     public function isHandMatched(): bool
     {
         return $this->picks->isNotEmpty();
