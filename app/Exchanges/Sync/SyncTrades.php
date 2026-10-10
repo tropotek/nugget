@@ -26,6 +26,9 @@ use UnexpectedValueException;
  * it: a page the ledger cannot support (a sale of more than is held) is
  * refused whole, and the next sync starts from the same place.
  *
+ * A trade at or before the exchange's `trades_after` is not stored: a backfill
+ * from the exchange's transaction report has brought it in already.
+ *
  * The owner gets one NewTrades notification for a sync that stored any.
  *
  * A trade is passed over, and counted in the note, when no asset has its
@@ -107,6 +110,11 @@ class SyncTrades
             $added = [];
 
             foreach ($trades as $trade) {
+                // The exchange's own report has already given everything up to here.
+                if ($exchange->trades_after && $trade->at->lessThanOrEqualTo($exchange->trades_after)) {
+                    continue;
+                }
+
                 $asset = $trade->quote === 'AUD' ? $assets->get($trade->market) : null;
 
                 if (! $asset) {

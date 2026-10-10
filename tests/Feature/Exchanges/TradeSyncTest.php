@@ -400,6 +400,23 @@ class TradeSyncTest extends TestCase
         );
     }
 
+    public function test_trades_a_backfill_has_already_brought_in_are_not_stored_again(): void
+    {
+        // The exchange's own report covered everything up to the end of 11 June.
+        $this->exchange->forceFill(['trades_after' => '2025-06-12 00:00:00'])->save();
+        Transaction::factory()->for($this->bitcoin)->buy('0.02', '150000', '25.5')->fromExchange('csv-900000003')->create(['occurred_at' => '2025-06-10 02:00:00']);
+        $this->fakeTrades();
+
+        $this->assertTrue($this->sync());
+
+        // The two trades of 10 and 11 June are left to the report; the sale of the 15th is new.
+        $this->assertSame(['csv-900000003 buy 0.02 @ 150000 25.50 3025.50', '1000000004 sell 0.005 @ 160000 6.80 793.20'], $this->ledger($this->bitcoin));
+        $this->assertSame([], $this->ledger($this->cardano));
+        // They were read all the same, and are not read again.
+        $this->assertSame('1000000005', $this->exchange->refresh()->trade_cursor);
+        $this->assertStringNotContainsString('ADA-AUD', (string) $this->exchange->last_sync_note);
+    }
+
     // Telling the owner
 
     public function test_a_sync_that_stores_trades_tells_the_owner_once(): void

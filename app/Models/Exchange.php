@@ -19,7 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * The owner is set through the user's relation, and the AUD balance, last
  * sync time, last error, last sync note and trade cursor (the exchange's id
- * of the last trade read) are written by the sync
+ * of the last trade read) are written by the sync, and `trades_after` (the
+ * moment its history is already in up to) by the backfill
  * (App\Exchanges\Sync\ExchangeSync), so none of them is fillable.
  */
 #[Fillable(['driver', 'label', 'api_key', 'secret', 'active'])]
@@ -46,6 +47,7 @@ class Exchange extends Model implements Owned
             'aud_balance' => DecimalCast::aud(),
             'active' => 'boolean',
             'last_synced_at' => 'datetime',
+            'trades_after' => 'datetime',
         ];
     }
 
