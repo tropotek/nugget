@@ -40,6 +40,9 @@ class ExchangeSyncTest extends TestCase
 
         $this->travelTo('2025-06-30 03:07:00');
         $this->exchange = Exchange::factory()->create(['label' => 'Main account']);
+
+        // No trades: the trade step has its own tests.
+        Http::fake(['*/v3/trades*' => Http::response('[]')]);
     }
 
     private function fakeBalances(?string $body = null, int $status = 200): void
@@ -205,7 +208,7 @@ class ExchangeSyncTest extends TestCase
         $this->assertTrue($this->sync($exchange));
 
         $exchange->refresh();
-        $this->assertSame('Balances were not read: A plain exchange has no call for them.', $exchange->last_sync_note);
+        $this->assertSame('Balances were not read: A plain exchange has no call for them. Trades were not read: A plain exchange has no call for them.', $exchange->last_sync_note);
         $this->assertNull($exchange->last_error);
         $this->assertNotNull($exchange->last_synced_at);
         $this->assertSame('50.00', $exchange->aud_balance->toFixed(2));

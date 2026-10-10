@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * that talks to it (see App\Exchanges\ExchangeDrivers).
  *
  * The owner is set through the user's relation, and the AUD balance, last
- * sync time, last error and last sync note are written by the sync
+ * sync time, last error, last sync note and trade cursor (the exchange's id
+ * of the last trade read) are written by the sync
  * (App\Exchanges\Sync\ExchangeSync), so none of them is fillable.
  */
 #[Fillable(['driver', 'label', 'api_key', 'secret', 'active'])]

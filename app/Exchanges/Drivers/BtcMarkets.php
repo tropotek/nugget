@@ -2,16 +2,20 @@
 
 namespace App\Exchanges\Drivers;
 
+use App\Enums\TransactionType;
 use App\Exchanges\Balance;
 use App\Exchanges\Contracts\ChecksConnection;
 use App\Exchanges\Contracts\ListsMarkets;
 use App\Exchanges\Contracts\QuotesPrices;
 use App\Exchanges\Contracts\ReportsBalances;
+use App\Exchanges\Contracts\ReportsTrades;
 use App\Exchanges\ExchangeDriver;
 use App\Exchanges\Market;
+use App\Exchanges\Trade;
 use App\Models\Exchange;
 use App\Prices\Quote;
 use App\Support\Decimal;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -21,8 +25,11 @@ use UnexpectedValueException;
  * BTC Markets, by its v3 REST API (https://docs.btcmarkets.net). Amounts
  * come as strings, so nothing passes through a float.
  */
-class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, QuotesPrices, ReportsBalances
+class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, QuotesPrices, ReportsBalances, ReportsTrades
 {
+    /** The most trades BTC Markets gives in one call. */
+    private const TRADES_PER_PAGE = 200;
+
     /** @var array<string, Quote> the tickers read so far, by market */
     private array $quotes = [];
 
@@ -97,6 +104,52 @@ class BtcMarkets implements ChecksConnection, ExchangeDriver, ListsMarkets, Quot
                 is_string($balance['available'] ?? null) ? Decimal::of($balance['available'])->round(Decimal::UNITS_SCALE) : $units,
             );
         }, $balances);
+    }
+
+    /**
+     * `GET /v3/trades?after={id}` gives the trades straight after that one,
+     * newest first, and `after=0` starts from the account's first. The fee
+     * is in the market's quote currency: AUD on an AUD market.
+     */
+    public function tradesAfter(?string $tradeId): array
+    {
+        $trades = $this->signed('GET', 'trades')
+            ->get('trades', ['after' => $tradeId ?? '0', 'limit' => self::TRADES_PER_PAGE])
+            ->throw()
+            ->json();
+
+        if (! is_array($trades) || ! array_is_list($trades)) {
+            throw new UnexpectedValueException('BTC Markets did not answer with a list of trades.');
+        }
+
+        return array_reverse(array_map($this->trade(...), $trades));
+    }
+
+    private function trade(mixed $trade): Trade
+    {
+        foreach (['id', 'marketId', 'timestamp', 'price', 'amount', 'side', 'fee'] as $field) {
+            if (! is_array($trade) || ! is_string($trade[$field] ?? null)) {
+                throw new UnexpectedValueException("BTC Markets listed a trade with no {$field}.");
+            }
+        }
+
+        $quote = (string) substr((string) strrchr($trade['marketId'], '-'), 1);
+
+        return new Trade(
+            $trade['id'],
+            $trade['marketId'],
+            $quote,
+            match ($trade['side']) {
+                'Bid' => TransactionType::Buy,
+                'Ask' => TransactionType::Sell,
+                default => throw new UnexpectedValueException("BTC Markets listed trade {$trade['id']} with the side '{$trade['side']}'."),
+            },
+            CarbonImmutable::parse($trade['timestamp'])->utc(),
+            Decimal::of($trade['amount']),
+            Decimal::of($trade['price']),
+            Decimal::of($trade['fee']),
+            $quote,
+        );
     }
 
     private function ticker(string $market): Quote

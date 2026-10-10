@@ -199,7 +199,7 @@ class ExchangeManagerTest extends TestCase
         $exchange->forceFill(['last_synced_at' => '2025-06-30 02:15:00', 'last_error' => 'Rate limited'])->save();
 
         $this->get(route('exchanges.edit', $exchange))
-            ->assertSeeInOrder(['Nugget can read', 'Prices', 'Market list', 'Balances', 'Connection test', 'Last sync', '30 Jun 2025, 12:15pm', 'Last error', 'Rate limited', 'Test connection']);
+            ->assertSeeInOrder(['Nugget can read', 'Prices', 'Market list', 'Balances', 'Trades', 'Connection test', 'Last sync', '30 Jun 2025, 12:15pm', 'Last error', 'Rate limited', 'Test connection']);
     }
 
     public function test_the_edit_page_lists_the_balances_of_the_last_sync(): void
