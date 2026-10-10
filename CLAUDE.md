@@ -108,6 +108,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - To add a page to the sidebar, add an entry to `config/navigation.php`. An entry shows only once its route exists, and only to users who pass its `can` ability.
 - Flash a message with `->with('success' | 'error' | 'warning' | 'info', '…')`. The layouts show it.
 - A list that is filtered, sorted or paged swaps by htmx: its table is a `_table` partial inside an element with an id and `hx-boost`, and the controller returns the partial alone when `HX-Target` is that id (see `transactions/_table.blade.php`). It must still work as plain links and a GET form.
+- A part of a page that keeps itself fresh carries `hx-get`, `hx-trigger="every 60s"` and `hx-swap="outerHTML"` on its own element, and its controller returns the partial alone for that `HX-Target` (see `dashboard/_totals.blade.php`).
 - Search a user's transactions with `App\Ledger\TransactionSearch` (`fromInput()` reads a query string and passes over what it does not understand; `query()` is the builder). A string money or unit column is ordered in SQL by `CAST(… AS REAL)`, for the order only.
 - jQuery is imported only by the scripts in `resources/js/minton/` and is not a global. Nugget's own front-end code does not use it.
 - Only the Minton partials Nugget uses are in the repo. To use another, copy it from Minton and import it in `app.scss`. In a copied partial, a `url()` path is relative to that partial's own file.
