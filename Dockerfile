@@ -11,7 +11,8 @@ ARG FRANKENPHP=1.13-php8.4
 FROM dunglas/frankenphp:${FRANKENPHP}-bookworm AS dev
 
 # bcmath: all money and unit maths. pdo_mysql: the tkbtc importer reads a MariaDB database.
-RUN install-php-extensions pdo_sqlite pdo_mysql intl zip pcntl gd bcmath
+# gmp: ccxt, the exchange library, requires it.
+RUN install-php-extensions pdo_sqlite pdo_mysql intl zip pcntl gd bcmath gmp
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

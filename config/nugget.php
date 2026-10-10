@@ -29,6 +29,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Prices
+    |--------------------------------------------------------------------------
+    |
+    | The Swissquote forex feed that prices an asset with a feed symbol. The
+    | symbol (XAU/AUD) is added to the URL.
+    |
+    */
+
+    'prices' => [
+        'feed_url' => env('NUGGET_PRICE_FEED_URL', 'https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument'),
+    ],
+
     'dev' => [
         'admin' => [
             'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),

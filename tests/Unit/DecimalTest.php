@@ -222,6 +222,31 @@ class DecimalTest extends TestCase
         $this->assertSame('-0.125', Decimal::of('-0.125')->formatPrice());
     }
 
+    public function test_a_float_from_an_api_is_read_to_a_number_of_places(): void
+    {
+        $this->assertSame('118497.22', (string) Decimal::fromFloat(118497.22, 8));
+        $this->assertSame('6002.774', (string) Decimal::fromFloat(6002.774, 8));
+        $this->assertSame('0.00001234', (string) Decimal::fromFloat(1.234E-5, 8));
+        $this->assertSame('0.3', (string) Decimal::fromFloat(0.1 + 0.2, 8));
+        $this->assertSame('118376.79415468', (string) Decimal::fromFloat(118376.79415467869, 8));
+        $this->assertSame('1.01', (string) Decimal::fromFloat(1.005001, 2));
+        $this->assertSame('-2.5', (string) Decimal::fromFloat(-2.5, 8));
+        $this->assertSame('0', (string) Decimal::fromFloat(0.0, 8));
+        $this->assertSame('100000000000', (string) Decimal::fromFloat(1.0E11, 8));
+    }
+
+    public function test_a_float_that_is_not_a_number_is_refused(): void
+    {
+        foreach ([NAN, INF, -INF] as $value) {
+            try {
+                Decimal::fromFloat($value, 8);
+                $this->fail('Expected an exception.');
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     public function test_it_is_a_string_in_json(): void
     {
         $this->assertSame('{"total":"1234.5"}', json_encode(['total' => Decimal::of('1234.50')]));

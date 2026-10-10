@@ -42,6 +42,9 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 - `app/`: application code, `App\` namespace.
 - `app/Ledger/`: the calculations on the ledger: the parcel matcher and the holdings query.
+- `app/Prices/`: where prices are read from (an exchange's ticker, the Swissquote feed).
+- `app/Exchanges/`: the ccxt client for an exchange.
+- `tests/Fixtures/`: recorded API responses. `tests/Fakes/`: stand-ins for outside services.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
@@ -58,7 +61,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 ## Conventions
 
-- Money and unit values are never floats. They are `App\Support\Decimal` objects, made with `Decimal::of('1.5')` from a string or an integer; a float throws.
+- Money and unit values are never floats. They are `App\Support\Decimal` objects, made with `Decimal::of('1.5')` from a string or an integer; a float throws. The one way in for a float is `Decimal::fromFloat($value, $scale)`, for a number an outside API hands over as one (ccxt parses every number to a float).
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
 - Show a unit price or a cost per unit with `$decimal->formatPrice()`, which keeps the places a price under a dollar needs. Show an AUD total with `format()`.
 - Holdings are derived from the transaction ledger, never stored. Read them with `App\Ledger\Holdings` (`forUser`, `forAsset`), which gives an `App\Ledger\Holding` per asset: units, cost base and average cost. It does no authorising.
@@ -71,6 +74,9 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A date and time typed into a form is in the user's timezone: parse it with the user's `timezone` and store it in UTC.
 - A price (`App\Models\Price`) is the AUD bid and ask for one unit of an asset. An intraday row's `at` is the moment it was fetched. A day row is one per day in the owner's timezone and its `at` is that date at 00:00:00, made with `Price::day()`: a date, not a moment, so read it with `->at->toDateString()` and never through `LocalTime` or `<x-date>`.
 - An asset's latest price is its newest day row (`Price::latestPerAsset()`), not its newest intraday row: intraday rows are pruned.
+- Read an asset's current price with `App\Prices\PriceSources::quote($asset)`: an `App\Prices\Quote` (bid and ask) or null. A price source never throws: it logs a warning and returns null.
+- Talk to an exchange through `App\Exchanges\ExchangeClient::for($exchange)`, which returns the ccxt client, and check `supports($exchange, 'fetchTicker')` before a call: not every exchange has every call. Use only ccxt's synchronous classes, never `ccxt\async` or `ccxt\pro`: `composer.json` aliases `guzzlehttp/psr7` and `psr/http-message` so that ccxt installs beside the versions Laravel uses, and the async classes are what those pins are for.
+- In a test, bind `Tests\Fakes\FakeExchangeClient` (with a `Tests\Fakes\FakeCcxt`) for `ExchangeClient`, and use `Http::fake()` for the feed. No test touches the network.
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
 - A rematch gives every parcel a new id. Never store a parcel id outside the matcher.

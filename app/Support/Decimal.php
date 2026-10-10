@@ -51,6 +51,20 @@ final class Decimal implements JsonSerializable, Stringable
         return new self(new Number($value));
     }
 
+    /**
+     * A number that an outside API hands over as a float, rounded to a number
+     * of places. This is the only way in for a float, and it is for reading
+     * such a number, never for the result of float arithmetic.
+     */
+    public static function fromFloat(float $value, int $scale): self
+    {
+        if (! is_finite($value)) {
+            throw new InvalidArgumentException('A Decimal cannot be made from a float that is not a finite number.');
+        }
+
+        return self::of(sprintf("%.{$scale}F", $value));
+    }
+
     public static function zero(): self
     {
         return new self(new Number(0));

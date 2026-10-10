@@ -1,0 +1,92 @@
+[
+    {
+        "topo": {
+            "platform": "SwissquoteLtd",
+            "server": "Live5"
+        },
+        "spreadProfilePrices": [
+            {
+                "spreadProfile": "premium",
+                "bidSpread": 32.65,
+                "askSpread": 32.65,
+                "bid": 6002.774,
+                "ask": 6006.027
+            },
+            {
+                "spreadProfile": "prime",
+                "bidSpread": 31.25,
+                "askSpread": 31.25,
+                "bid": 6002.788,
+                "ask": 6006.013
+            },
+            {
+                "spreadProfile": "elite",
+                "bidSpread": 24.75,
+                "askSpread": 24.75,
+                "bid": 6002.853,
+                "ask": 6005.948
+            }
+        ],
+        "ts": 1791579600048
+    },
+    {
+        "topo": {
+            "platform": "AT",
+            "server": "AT"
+        },
+        "spreadProfilePrices": [
+            {
+                "spreadProfile": "standard",
+                "bidSpread": 36.65,
+                "askSpread": 36.65,
+                "bid": 6002.734,
+                "ask": 6006.067
+            },
+            {
+                "spreadProfile": "premium",
+                "bidSpread": 35.3,
+                "askSpread": 35.3,
+                "bid": 6002.747,
+                "ask": 6006.053
+            },
+            {
+                "spreadProfile": "prime",
+                "bidSpread": 33.9,
+                "askSpread": 33.9,
+                "bid": 6002.761,
+                "ask": 6006.039
+            }
+        ],
+        "ts": 1791579600048
+    },
+    {
+        "topo": {
+            "platform": "SwissquoteCapitalMarkets",
+            "server": "Live7"
+        },
+        "spreadProfilePrices": [
+            {
+                "spreadProfile": "premium",
+                "bidSpread": 32.65,
+                "askSpread": 32.65,
+                "bid": 6002.774,
+                "ask": 6006.027
+            },
+            {
+                "spreadProfile": "prime",
+                "bidSpread": 31.25,
+                "askSpread": 31.25,
+                "bid": 6002.788,
+                "ask": 6006.013
+            },
+            {
+                "spreadProfile": "elite",
+                "bidSpread": 24.75,
+                "askSpread": 24.75,
+                "bid": 6002.853,
+                "ask": 6005.948
+            }
+        ],
+        "ts": 1791579600048
+    }
+]
