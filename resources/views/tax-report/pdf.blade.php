@@ -13,6 +13,7 @@
     $money = fn (Decimal $amount) => ($amount->isNegative() ? '-' : '').'$'.$amount->abs()->format();
     $date = fn ($moment, string $format = 'j M Y') => LocalTime::of($moment, $user)->format($format);
     $columns = count($summary->sections) + 1;
+    $leftOut = collect($report->leftOut())->map->label();
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -45,6 +46,7 @@
     <table class="meta">
         <tr><td>For</td><td>{{ $user->name }} ({{ $user->email }})</td></tr>
         <tr><td>Financial year</td><td>1 July {{ $year->year - 1 }} to 30 June {{ $year->year }}</td></tr>
+        <tr><td>Asset classes</td><td>{{ collect($report->classes)->map->label()->join(', ') }}{{ $leftOut->isNotEmpty() ? ' ('.$leftOut->join(', ', ' and ').' left out)' : '' }}</td></tr>
         <tr><td>Generated</td><td>{{ $date($generatedAt, 'j M Y, g:ia') }} ({{ $user->timezone }})</td></tr>
     </table>
 
@@ -52,6 +54,13 @@
         <strong>A working paper, not tax advice.</strong> It is for you and your accountant to check. It covers capital gains only:
         staking rewards and airdrops are not totalled as income, and metals are not treated as collectables or personal use assets.
     </p>
+
+    @if ($leftOut->isNotEmpty())
+        <p class="warning">
+            <strong>{{ $leftOut->join(', ', ' and ') }} {{ $leftOut->count() === 1 ? 'is' : 'are' }} left out of this report.</strong>
+            {{ $leftOut->count() === 1 ? 'Its' : 'Their' }} sales are in neither the sections nor the summary.
+        </p>
+    @endif
 
     @if ($estimated > 0)
         <p class="warning">
@@ -137,7 +146,7 @@
             <h2>{{ $section->section->label() }}: disposals in {{ $year->label() }}</h2>
 
             @if ($disposals->isEmpty())
-                <p>Nothing was sold in this section in {{ $year->label() }}.</p>
+                <p>{{ $report->takesIn($section->section) ? "Nothing was sold in this section in {$year->label()}." : 'This section is left out of the report.' }}</p>
             @else
                 <table class="figures">
                     <thead>

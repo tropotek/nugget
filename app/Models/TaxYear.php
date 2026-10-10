@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\DecimalCast;
+use App\Enums\AssetClass;
 use App\Models\Contracts\Owned;
 use App\Support\Decimal;
 use App\Support\FinancialYear;
@@ -11,13 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * What a user has entered for the tax report of one financial year: the
- * capital losses carried forward into it from earlier years. `year` is the
- * year it ends in. A year with no row has none.
+ * What a user has chosen for the tax report of one financial year: the
+ * capital losses carried forward into it from earlier years, and the asset
+ * classes it takes in. `year` is the year it ends in. A year with no row has
+ * no losses and takes in every class.
  *
  * The owner is set through the user's relation, so it is not fillable.
  */
-#[Fillable(['year', 'losses_carried_forward'])]
+#[Fillable(['year', 'losses_carried_forward', 'asset_classes'])]
 class TaxYear extends Model implements Owned
 {
     /** @var array<string, mixed> */
@@ -33,7 +35,33 @@ class TaxYear extends Model implements Owned
         return [
             'year' => 'integer',
             'losses_carried_forward' => DecimalCast::aud(),
+            'asset_classes' => 'array',
         ];
+    }
+
+    /**
+     * The asset classes a user's report for a year takes in: every class
+     * when none are chosen.
+     *
+     * @return list<AssetClass>
+     */
+    public static function classesIn(User $user, FinancialYear $year): array
+    {
+        return $user->taxYears()->where('year', $year->year)->first()?->classes() ?? AssetClass::cases();
+    }
+
+    /**
+     * The classes this year's report takes in, in the order of AssetClass.
+     *
+     * @return list<AssetClass>
+     */
+    public function classes(): array
+    {
+        $chosen = $this->asset_classes;
+
+        return $chosen === null
+            ? AssetClass::cases()
+            : array_values(array_filter(AssetClass::cases(), fn (AssetClass $class) => in_array($class->value, $chosen, true)));
     }
 
     /**

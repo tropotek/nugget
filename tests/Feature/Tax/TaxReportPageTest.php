@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tax;
 
 use App\Enums\AssetClass;
+use App\Enums\TaxSection;
 use App\Facades\Settings;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
@@ -247,7 +248,7 @@ class TaxReportPageTest extends TestCase
 
         $this->put('/tax-report/2025', ['losses_carried_forward' => '1000.50'])
             ->assertRedirect(route('tax-report.show', 2025))
-            ->assertSessionHas('success', 'Saved the losses carried forward into 2024–25.');
+            ->assertSessionHas('success', 'Saved the choices for 2024–25.');
 
         $this->assertSame('1000.50', $this->user->taxYears()->where('year', 2025)->sole()->losses_carried_forward->toFixed(2));
 
@@ -405,5 +406,161 @@ class TaxReportPageTest extends TestCase
         $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
 
         $this->assertStringNotContainsString('Their coin', app(TaxReportPdf::class)->html($this->user, $report));
+    }
+
+    // The asset classes in the report
+
+    /**
+     * The ledger, and a sale of a stamp collection (class "other") for a $400 short-held gain.
+     */
+    private function ledgerWithStamps(): Asset
+    {
+        $this->ledger();
+        $stamps = Asset::factory()->for($this->user)->create(['name' => 'Stamps', 'class' => AssetClass::Other, 'unit' => 'item']);
+        $this->add($stamps, '2024-08-01', Transaction::factory()->buy('1', '100'));
+        $this->add($stamps, '2025-01-10', Transaction::factory()->sell('1', '500'));
+
+        return $stamps;
+    }
+
+    public function test_a_report_takes_in_every_asset_class_until_some_are_chosen(): void
+    {
+        $this->ledgerWithStamps();
+
+        $this->get('/tax-report/2025')
+            ->assertOk()
+            ->assertSeeInOrder(['Asset classes in the report', 'value="crypto" checked', 'value="metal" checked', 'value="other" checked'], false)
+            ->assertDontSee('left-out-notice')
+            // $1,900 of short-held and $3,900 of long-held gains, less $2,000: $3,800 left to halve.
+            ->assertSeeInOrder(['Net capital gain', '$1,900.00']);
+    }
+
+    public function test_the_classes_chosen_are_saved_for_the_year_and_the_rest_are_left_out_of_everything(): void
+    {
+        $this->ledgerWithStamps();
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto', 'other']])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('tax-report.show', 2025));
+
+        $this->assertSame(['crypto', 'other'], $this->user->taxYears()->where('year', 2025)->sole()->asset_classes);
+
+        // Without the gold's $900: $1,900 short-held and $3,000 long-held, less $2,000, leaves $2,900 to halve.
+        $this->get('/tax-report/2025')
+            ->assertSeeInOrder(['id="left-out-notice"', 'Metal is left out of this report.'], false)
+            ->assertSeeInOrder(['value="crypto" checked', 'value="metal">', 'value="other" checked'], false)
+            ->assertSeeInOrder(['Gains on assets held longer than 12 months', '$3,000.00', '$0.00', '$3,000.00'])
+            ->assertSeeInOrder(['Net capital gain', '$1,450.00'])
+            ->assertSeeInOrder(['Other assets', 'Other only', 'id="disposals-other"', 'Stamps', '1 disposal'], false)
+            ->assertDontSee('3 Mar 2025');
+    }
+
+    public function test_a_section_with_every_class_left_out_says_so(): void
+    {
+        $this->ledgerWithStamps();
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
+
+        $this->get('/tax-report/2025')
+            ->assertSee('Metal and Other are left out of this report.')
+            ->assertSeeInOrder(['id="disposals-other"', 'This section is left out of the report.'], false)
+            ->assertDontSee('Stamps')
+            // Crypto alone: $1,500 short-held and $3,000 long-held, less $2,000.
+            ->assertSeeInOrder(['Net capital gain', '$1,250.00']);
+    }
+
+    public function test_choosing_every_class_again_clears_the_choice(): void
+    {
+        $this->ledgerWithStamps();
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'other', 'metal', 'crypto']])->assertSessionHasNoErrors();
+
+        $this->assertNull($this->user->taxYears()->where('year', 2025)->sole()->asset_classes);
+        $this->get('/tax-report/2025')->assertDontSee('left-out-notice')->assertSeeInOrder(['Net capital gain', '$1,900.00']);
+    }
+
+    public function test_a_report_needs_at_least_one_class_and_only_real_ones(): void
+    {
+        $this->ledgerWithStamps();
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
+
+        $this->from('/tax-report/2025')->put('/tax-report/2025', ['losses_carried_forward' => '5', 'asset_classes' => ['']])
+            ->assertSessionHasErrors(['asset_classes' => 'Choose at least one asset class for the report.']);
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '5', 'asset_classes' => ['', 'shares']])->assertSessionHasErrors('asset_classes.0');
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '5', 'asset_classes' => 'crypto'])->assertSessionHasErrors('asset_classes');
+
+        // Nothing of a refused form is saved.
+        $saved = $this->user->taxYears()->where('year', 2025)->sole();
+        $this->assertSame(['crypto'], $saved->asset_classes);
+        $this->assertSame('0.00', $saved->losses_carried_forward->toFixed(2));
+    }
+
+    public function test_saving_the_losses_alone_leaves_the_classes_as_they_were(): void
+    {
+        $this->ledgerWithStamps();
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '250'])->assertSessionHasNoErrors();
+
+        $saved = $this->user->taxYears()->where('year', 2025)->sole();
+        $this->assertSame(['crypto'], $saved->asset_classes);
+        $this->assertSame('250.00', $saved->losses_carried_forward->toFixed(2));
+    }
+
+    public function test_each_year_and_each_user_has_their_own_classes(): void
+    {
+        $this->ledgerWithStamps();
+        $this->add($this->gold, '2025-07-10', Transaction::factory()->sell('1', '3500'));
+        $other = User::factory()->create();
+        $other->taxYears()->create(['year' => 2026, 'asset_classes' => ['crypto']]);
+
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto']]);
+
+        // 2025–26 still takes in the gold: half of its $1,000 long-held gain.
+        $this->get('/tax-report/2026')->assertDontSee('left-out-notice')->assertSeeInOrder(['Net capital gain', '$500.00']);
+        $this->assertSame(['crypto'], $other->taxYears()->sole()->asset_classes);
+    }
+
+    public function test_the_calculator_can_be_told_the_classes_whatever_is_saved(): void
+    {
+        $this->ledgerWithStamps();
+        $this->user->taxYears()->create(['year' => 2025, 'asset_classes' => ['crypto']]);
+        $calculator = app(CgtCalculator::class);
+        $year = new FinancialYear(2025);
+
+        $saved = $calculator->forYear($this->user, $year);
+        $metal = $calculator->forYear($this->user, $year, classes: [AssetClass::Metal]);
+
+        $this->assertSame([AssetClass::Crypto], $saved->classes);
+        $this->assertSame([AssetClass::Metal, AssetClass::Other], $saved->leftOut());
+        $this->assertTrue($saved->takesIn(TaxSection::Crypto));
+        $this->assertFalse($saved->takesIn(TaxSection::Other));
+        $this->assertSame('1250.00', $saved->summary->netGain->toFixed(2));
+
+        // The gold alone: half of $900.
+        $this->assertSame('450.00', $metal->summary->netGain->toFixed(2));
+        $this->assertSame(1, $metal->summary->sections[1]->disposals);
+        $this->assertSame(0, $metal->summary->sections[0]->disposals);
+    }
+
+    public function test_the_pdf_follows_the_classes_chosen_and_says_what_is_left_out(): void
+    {
+        $this->ledgerWithStamps();
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'crypto', 'other']]);
+        $report = app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025));
+
+        $html = app(TaxReportPdf::class)->html($this->user, $report);
+
+        $this->assertStringContainsString('Crypto, Other (Metal left out)', $html);
+        $this->assertStringContainsString('Metal is left out of this report.', $html);
+        $this->assertStringContainsString('Stamps', $html);
+        $this->assertStringContainsString('$1,450.00', $html);
+        $this->assertStringNotContainsString('3 Mar 2025', $html);
+
+        $all = app(TaxReportPdf::class)->html($this->user, app(CgtCalculator::class)->forYear($this->user, new FinancialYear(2025), classes: AssetClass::cases()));
+
+        $this->assertStringContainsString('<td>Crypto, Metal, Other</td>', $all);
+        $this->assertStringNotContainsString('left out', $all);
     }
 }

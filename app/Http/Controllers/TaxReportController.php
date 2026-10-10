@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AssetClass;
 use App\Facades\Settings;
 use App\Ledger\ReportYear;
 use App\Ledger\ReportYears;
@@ -13,6 +14,7 @@ use App\Tax\TaxReportPdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -56,6 +58,7 @@ class TaxReportController extends Controller
             // What the year before leaves to carry forward, as a prompt for the field. Nothing is filled in.
             'broughtForward' => $this->isOpen($year - 1) ? $calculator->forYear($user, $before)->summary->lossCarriedForward : null,
             'before' => $before,
+            'classes' => AssetClass::cases(),
         ]);
     }
 
@@ -77,7 +80,9 @@ class TaxReportController extends Controller
     }
 
     /**
-     * Save the losses carried forward into the year.
+     * Save what the user chose for the year's report: the losses carried
+     * forward into it and, when the form sends them, the asset classes it
+     * takes in. Every class chosen is saved as no choice at all.
      */
     public function update(Request $request, int $year): RedirectResponse
     {
@@ -85,17 +90,30 @@ class TaxReportController extends Controller
             return $refused;
         }
 
-        $request->validate(
-            ['losses_carried_forward' => ['required', new Amount(Decimal::AUD_SCALE)]],
-            attributes: ['losses_carried_forward' => 'losses carried forward'],
+        // The form sends a blank with the boxes, so that none ticked is told from not sent.
+        if (is_array($request->input('asset_classes'))) {
+            $request->merge(['asset_classes' => array_values(array_filter($request->input('asset_classes'), fn (mixed $class) => $class !== null && $class !== ''))]);
+        }
+
+        $chosen = $request->validate(
+            [
+                'losses_carried_forward' => ['required', new Amount(Decimal::AUD_SCALE)],
+                'asset_classes' => ['sometimes', 'array', 'min:1'],
+                'asset_classes.*' => ['distinct', Rule::enum(AssetClass::class)],
+            ],
+            ['asset_classes.min' => 'Choose at least one asset class for the report.'],
+            ['losses_carried_forward' => 'losses carried forward', 'asset_classes' => 'asset classes'],
         );
 
-        $request->user()->taxYears()->updateOrCreate(
-            ['year' => $year],
-            ['losses_carried_forward' => Decimal::of((string) $request->input('losses_carried_forward'))],
-        );
+        $save = ['losses_carried_forward' => Decimal::of((string) $chosen['losses_carried_forward'])];
 
-        return redirect()->route('tax-report.show', $year)->with('success', 'Saved the losses carried forward into '.(new FinancialYear($year))->label().'.');
+        if (isset($chosen['asset_classes'])) {
+            $save['asset_classes'] = count($chosen['asset_classes']) === count(AssetClass::cases()) ? null : $chosen['asset_classes'];
+        }
+
+        $request->user()->taxYears()->updateOrCreate(['year' => $year], $save);
+
+        return redirect()->route('tax-report.show', $year)->with('success', 'Saved the choices for '.(new FinancialYear($year))->label().'.');
     }
 
     /**
