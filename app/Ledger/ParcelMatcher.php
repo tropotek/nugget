@@ -2,13 +2,15 @@
 
 namespace App\Ledger;
 
+use App\Enums\ParcelMatching;
 use App\Enums\TransactionType;
+use App\Facades\Settings;
+use App\Ledger\Matching\MatchingStrategy;
 use App\Models\Asset;
 use App\Models\Disposal;
 use App\Models\Parcel;
 use App\Models\Transaction;
 use App\Support\Decimal;
-use App\Support\LocalTime;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +23,9 @@ use Illuminate\Support\Facades\DB;
  *
  * - A buy, a find, a reward and an adjustment up each open a parcel. Its cost
  *   base is the transaction's total, which already includes the fee.
- * - A sale uses up the oldest parcels first and writes a disposal for each.
- *   Its proceeds are the transaction's total, which already has the fee off.
+ * - A sale uses up parcels in the order its matching method gives (oldest
+ *   first, or lowest gain first) and writes a disposal for each. Its proceeds
+ *   are the transaction's total, which already has the fee off.
  * - A transfer out and an adjustment down use up the oldest parcels with no
  *   disposal. What a transfer out removes waits to arrive somewhere.
  * - A transfer in takes what is waiting, oldest transfer first, and opens a
@@ -37,13 +40,16 @@ class ParcelMatcher
 {
     /**
      * Rebuild the parcels and disposals of an asset, and of the same user's
-     * other assets with its symbol and unit.
+     * other assets with its symbol and unit. Sales are matched by the given
+     * method, or by the parcel matching setting when none is given.
      *
      * @throws InsufficientUnits when a transaction takes out more than is held. Nothing is changed.
      */
-    public function rematch(Asset $asset): void
+    public function rematch(Asset $asset, ?ParcelMatching $method = null): void
     {
-        DB::transaction(function () use ($asset) {
+        $strategy = ($method ?? ParcelMatching::from(Settings::get('parcel_matching')))->strategy();
+
+        DB::transaction(function () use ($asset, $strategy) {
             $assets = Asset::with('user')
                 ->where('user_id', $asset->user_id)
                 ->where('symbol', $asset->symbol)
@@ -69,7 +75,7 @@ class ParcelMatcher
                 match (true) {
                     $transaction->type === TransactionType::TransferIn => $this->arrive($transaction, $parcels, $inTransit),
                     $transaction->type === TransactionType::TransferOut => array_push($inTransit, ...$this->take($transaction, $parcels)),
-                    $transaction->type === TransactionType::Sell => $this->sell($transaction, $parcels),
+                    $transaction->type === TransactionType::Sell => $this->sell($transaction, $parcels, $strategy),
                     $transaction->units->isNegative() => $this->take($transaction, $parcels),
                     default => $this->open($parcels, $transaction, $transaction->occurred_at, $transaction->units, $transaction->total, $transaction->estimated),
                 };
@@ -119,7 +125,8 @@ class ParcelMatcher
     }
 
     /**
-     * Use up the oldest parcels for a transaction that takes units out.
+     * Use up parcels for a transaction that takes units out: in the order the
+     * strategy gives, or oldest first when there is none.
      *
      * The cost base of each piece is what the parcel's remaining cost base
      * falls by, so the pieces of a parcel always add up to its cost exactly.
@@ -129,7 +136,7 @@ class ParcelMatcher
      *
      * @throws InsufficientUnits
      */
-    private function take(Transaction $transaction, array &$parcels): array
+    private function take(Transaction $transaction, array &$parcels, ?MatchingStrategy $strategy = null): array
     {
         $needed = $transaction->units->abs();
         $held = Decimal::sum(array_map(fn (Parcel $parcel) => $parcel->units_remaining, $parcels));
@@ -140,8 +147,11 @@ class ParcelMatcher
 
         $pieces = [];
 
-        while ($needed->isPositive()) {
-            $parcel = $parcels[0];
+        foreach ($strategy?->order($parcels, $transaction) ?? $parcels as $parcel) {
+            if (! $needed->isPositive()) {
+                break;
+            }
+
             $units = $needed->lessThan($parcel->units_remaining) ? $needed : $parcel->units_remaining;
             $costBefore = $parcel->remainingCostBase();
 
@@ -157,11 +167,9 @@ class ParcelMatcher
             ];
 
             $needed = $needed->sub($units);
-
-            if (! $parcel->isOpen()) {
-                array_shift($parcels);
-            }
         }
+
+        $parcels = array_values(array_filter($parcels, fn (Parcel $parcel) => $parcel->isOpen()));
 
         return $pieces;
     }
@@ -172,12 +180,12 @@ class ParcelMatcher
      *
      * @param  list<Parcel>  $parcels
      */
-    private function sell(Transaction $sale, array &$parcels): void
+    private function sell(Transaction $sale, array &$parcels, MatchingStrategy $strategy): void
     {
         $unitsSoFar = Decimal::zero();
         $proceedsSoFar = Decimal::zero();
 
-        foreach ($this->take($sale, $parcels) as $piece) {
+        foreach ($this->take($sale, $parcels, $strategy) as $piece) {
             $unitsSoFar = $unitsSoFar->add($piece['units']);
             $proceedsToHere = $sale->total->mul($unitsSoFar)->div($sale->units, Decimal::AUD_SCALE);
             $proceeds = $proceedsToHere->sub($proceedsSoFar);
@@ -189,7 +197,7 @@ class ParcelMatcher
                 'cost_base' => $piece['cost'],
                 'proceeds' => $proceeds,
                 'gain' => $proceeds->sub($piece['cost']),
-                'long_held' => $this->isLongHeld($piece['acquired_at'], $sale),
+                'long_held' => HoldingPeriod::isLongHeld($piece['acquired_at'], $sale->occurred_at, $sale->asset->user),
             ]);
         }
     }
@@ -227,20 +235,5 @@ class ParcelMatcher
         if ($needed->isPositive()) {
             $this->open($parcels, $transfer, $transfer->occurred_at, $needed, $transfer->total, $transfer->estimated);
         }
-    }
-
-    /**
-     * Held longer than 12 months, by the owner's calendar, not counting the
-     * day of acquisition or the day of sale: a parcel acquired on 10 March is
-     * long held when sold on or after 11 March the next year.
-     */
-    private function isLongHeld(DateTimeInterface $acquiredAt, Transaction $sale): bool
-    {
-        $owner = $sale->asset->user;
-
-        $acquired = LocalTime::of($acquiredAt, $owner)->startOfDay();
-        $sold = LocalTime::of($sale->occurred_at, $owner)->startOfDay();
-
-        return $sold->greaterThan($acquired->addYearNoOverflow());
     }
 }
