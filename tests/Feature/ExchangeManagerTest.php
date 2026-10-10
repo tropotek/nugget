@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\Fakes\PlainDriver;
@@ -366,5 +367,82 @@ class ExchangeManagerTest extends TestCase
         $this->get('/exchanges')->assertOk()->assertSeeInOrder(['Old Kraken', 'kraken']);
         $this->get(route('exchanges.edit', $exchange))->assertOk()->assertSee('there is no driver called kraken');
         $this->post(route('exchanges.test', $exchange))->assertSessionHas('error');
+    }
+
+    // Sync now
+
+    private function fakeTheExchange(string $balances = '[{"assetName":"AUD","balance":"75","available":"75","locked":"0"}]', int $status = 200): void
+    {
+        Http::fake([
+            self::BALANCES => Http::response($balances, $status),
+            '*/v3/trades*' => Http::response('[]'),
+            '*/v3/markets' => Http::response('[]'),
+        ]);
+    }
+
+    public function test_sync_now_syncs_the_exchange_and_says_so(): void
+    {
+        $this->fakeTheExchange();
+        $exchange = $this->exchange(['label' => 'Main account']);
+
+        $this->get(route('exchanges.edit', $exchange))->assertSee('action="'.route('exchanges.sync', $exchange).'"', false)->assertSee('Sync now');
+        $this->get('/exchanges')->assertSee('action="'.route('exchanges.sync', $exchange).'"', false);
+
+        $this->from(route('exchanges.index'))->post(route('exchanges.sync', $exchange))
+            ->assertRedirect(route('exchanges.index'))
+            ->assertSessionHas('success', 'Synced Main account.');
+
+        $exchange->refresh();
+        $this->assertSame('75.00', $exchange->aud_balance->toFixed(2));
+        $this->assertNotNull($exchange->last_synced_at);
+    }
+
+    public function test_sync_now_works_on_an_inactive_exchange(): void
+    {
+        $this->fakeTheExchange();
+        $exchange = $this->exchange(['active' => false]);
+
+        $this->post(route('exchanges.sync', $exchange))->assertSessionHas('success');
+
+        $this->assertNotNull($exchange->refresh()->last_synced_at);
+        $this->get(route('exchanges.edit', $exchange))->assertSee('This exchange is inactive, so it is synced only from here.');
+    }
+
+    public function test_a_sync_now_that_fails_shows_the_reason(): void
+    {
+        $this->fakeTheExchange('{"code":"InvalidAPIKey","message":"invalid api key"}', 401);
+        $exchange = $this->exchange(['label' => 'Main account']);
+
+        $this->post(route('exchanges.sync', $exchange))
+            ->assertRedirect(route('exchanges.edit', $exchange))
+            ->assertSessionHas('error', 'Main account did not sync: invalid api key (InvalidAPIKey, HTTP 401)');
+    }
+
+    public function test_a_sync_now_that_skips_a_step_says_which(): void
+    {
+        $this->app->scoped(ExchangeDrivers::class, fn () => new ExchangeDrivers(['plain' => PlainDriver::class]));
+        $exchange = $this->exchange(['driver' => 'plain', 'label' => 'Plain']);
+
+        $this->post(route('exchanges.sync', $exchange))
+            ->assertSessionHas('warning', fn (string $message) => str_starts_with($message, 'Synced Plain. Balances were not read'));
+    }
+
+    public function test_a_sync_now_during_another_sync_says_it_is_busy(): void
+    {
+        $exchange = $this->exchange(['label' => 'Main account']);
+        Cache::lock("exchange-sync:{$exchange->id}", 600)->get();
+
+        $this->post(route('exchanges.sync', $exchange))->assertSessionHas('info', 'Main account is already being synced. Look again in a minute.');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_another_users_exchange_cannot_be_synced(): void
+    {
+        $theirs = $this->exchange([], User::factory()->create());
+
+        $this->post(route('exchanges.sync', $theirs))->assertForbidden();
+
+        Http::assertNothingSent();
     }
 }

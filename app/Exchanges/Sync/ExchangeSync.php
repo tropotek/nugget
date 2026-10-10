@@ -5,6 +5,7 @@ namespace App\Exchanges\Sync;
 use App\Exchanges\ExchangeDrivers;
 use App\Exchanges\Failure;
 use App\Models\Exchange;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -12,7 +13,7 @@ use Throwable;
  * Brings one exchange up to date, a step at a time: its balances, its trades,
  * then a comparison of the two with the ledger.
  *
- * It never throws. A sync that works sets the exchange's `last_synced_at`,
+ * It never throws, and syncs an exchange once at a time. A sync that works sets the exchange's `last_synced_at`,
  * clears its `last_error` and sets `last_sync_note` to the steps its driver
  * could not do, which is a normal outcome. A step that fails stops the sync:
  * the reason goes in `last_error` and a warning in the log, and the time of
@@ -27,10 +28,29 @@ class ExchangeSync
         private readonly ReconcileBalances $reconcile,
     ) {}
 
+    /** A lock left by a sync that died is dropped after this many seconds. */
+    private const LOCK_SECONDS = 600;
+
     /**
-     * @return bool whether the sync worked
+     * One sync of an exchange at a time: the schedule and the "Sync now"
+     * button may ask at the same moment, and the second is told it is busy.
      */
-    public function run(Exchange $exchange): bool
+    public function run(Exchange $exchange): SyncOutcome
+    {
+        $lock = Cache::lock("exchange-sync:{$exchange->id}", self::LOCK_SECONDS);
+
+        if (! $lock->get()) {
+            return SyncOutcome::Busy;
+        }
+
+        try {
+            return $this->sync($exchange);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function sync(Exchange $exchange): SyncOutcome
     {
         try {
             $driver = $this->drivers->for($exchange);
@@ -45,7 +65,7 @@ class ExchangeSync
 
             $exchange->forceFill(['last_error' => Failure::reason($e)])->save();
 
-            return false;
+            return SyncOutcome::Failed;
         }
 
         $exchange->forceFill([
@@ -54,6 +74,6 @@ class ExchangeSync
             'last_sync_note' => $notes ? implode(' ', $notes) : null,
         ])->save();
 
-        return true;
+        return SyncOutcome::Synced;
     }
 }

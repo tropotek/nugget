@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Exchanges\Contracts\ChecksConnection;
 use App\Exchanges\ExchangeDrivers;
 use App\Exchanges\Failure;
+use App\Exchanges\Sync\ExchangeSync;
+use App\Exchanges\Sync\SyncOutcome;
 use App\Http\Requests\ExchangeRequest;
 use App\Models\Exchange;
 use App\Notifications\BalanceMismatch;
@@ -103,6 +105,25 @@ class ExchangeController extends Controller
         }
 
         return $back->with('success', "{$exchange->label} connected: the exchange accepted the key.");
+    }
+
+    /**
+     * Sync the exchange now, active or not, and say how it went. The sync
+     * records its own result on the exchange.
+     */
+    public function sync(Exchange $exchange, ExchangeSync $sync): RedirectResponse
+    {
+        Gate::authorize('update', $exchange);
+
+        $back = redirect()->back(fallback: route('exchanges.edit', $exchange));
+
+        return match ($sync->run($exchange)) {
+            SyncOutcome::Synced => $exchange->last_sync_note
+                ? $back->with('warning', "Synced {$exchange->label}. {$exchange->last_sync_note}")
+                : $back->with('success', "Synced {$exchange->label}."),
+            SyncOutcome::Failed => $back->with('error', "{$exchange->label} did not sync: {$exchange->last_error}"),
+            SyncOutcome::Busy => $back->with('info', "{$exchange->label} is already being synced. Look again in a minute."),
+        };
     }
 
     private function form(Exchange $exchange): View

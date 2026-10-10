@@ -32,7 +32,7 @@ docker compose build app                          # after changing the Dockerfil
 |---|---|---|
 | `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
 | `vite` | http://localhost:5778 | Vite dev server, hot reload |
-| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed every 5 minutes, and prunes them nightly |
+| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed and syncs every active exchange every 5 minutes, and prunes prices nightly |
 | `mailpit` | http://localhost:8779 | catches all outgoing mail |
 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
@@ -90,7 +90,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Read an exchange's markets through `App\Exchanges\Markets` (`for`, `inAud`, `prices`), not from the driver: it caches the list by driver for a day and never throws. An empty list means it is not known, so nothing is refused because of it. Cache plain arrays, not objects: `cache.serializable_classes` is off.
 - An exchange's key and secret are never put on a page or in the session, in whole or in part. Its form fields are empty on an edit and a blank one keeps what is saved. Its driver is fixed once it is added, and it is deleted only when no asset is priced by it.
 - A private call to BTC Markets goes through `BtcMarkets::signed()`. Say why a call to an exchange failed with `App\Exchanges\Failure::reason($e)`, which never includes the request.
-- Sync an exchange with `App\Exchanges\Sync\ExchangeSync::run($exchange)`, which runs the steps in `App\Exchanges\Sync` and never throws: it writes the exchange's `last_synced_at`, `last_error` and `last_sync_note` (the steps its driver could not do). A step takes the exchange and its driver, returns a note when it is skipped and throws when it fails.
+- Sync an exchange with `App\Exchanges\Sync\ExchangeSync::run($exchange)`, which runs the steps in `App\Exchanges\Sync` and never throws. It returns a `SyncOutcome` (`Synced`, `Failed`, or `Busy` when another sync of that exchange holds the lock) and writes the exchange's `last_synced_at`, `last_error` and `last_sync_note` (the steps its driver could not do). A step takes the exchange and its driver, returns a note when it is skipped and throws when it fails.
 - What an exchange said the account held at its last sync is in `exchange_balances` (`$exchange->balances`), AUD included, with no row for a symbol not held. Only `SyncBalances` writes them. They are the exchange's figures: a sync never changes the ledger to match.
 - An exchange's trades are stored by `App\Exchanges\Sync\SyncTrades`: a buy or a sell with source `exchange` and the exchange's trade id as `external_id`, on the first-added asset of that exchange with the trade's market. `exchanges.trade_cursor` is the last trade read. A trade on a market with no asset, or not priced in AUD, is passed over and noted, never guessed at.
 - The assets held on an exchange are `$exchange->tradedAssets()` (by market id; the first added where two share a market). The sync stores trades on them and compares their holdings with the exchange's balances. An asset that only shares a market for its price is not on the exchange.

@@ -142,13 +142,22 @@
                             @endif
                         </dl>
 
-                        @if ($drivers->can($exchange->driver, App\Exchanges\Contracts\ChecksConnection::class))
-                            <form method="POST" action="{{ route('exchanges.test', $exchange) }}" class="mt-3">
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <form method="POST" action="{{ route('exchanges.sync', $exchange) }}">
                                 @csrf
-                                <button type="submit" class="btn btn-light"><i class="ri-plug-line me-1"></i>Test connection</button>
-                                <div class="form-text">Tries the saved key and secret. Save a change to them first.</div>
+                                <button type="submit" class="btn btn-primary"><i class="ri-refresh-line me-1"></i>Sync now</button>
                             </form>
-                        @endif
+                            @if ($drivers->can($exchange->driver, App\Exchanges\Contracts\ChecksConnection::class))
+                                <form method="POST" action="{{ route('exchanges.test', $exchange) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-light"><i class="ri-plug-line me-1"></i>Test connection</button>
+                                </form>
+                            @endif
+                        </div>
+                        <div class="form-text">
+                            Both use the saved key and secret: save a change to them first.
+                            {{ $exchange->active ? 'An active exchange is also synced every 5 minutes.' : 'This exchange is inactive, so it is synced only from here.' }}
+                        </div>
                     </div>
                 </div>
 

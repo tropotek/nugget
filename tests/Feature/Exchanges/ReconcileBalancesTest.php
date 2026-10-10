@@ -4,6 +4,7 @@ namespace Tests\Feature\Exchanges;
 
 use App\Exchanges\Sync\ExchangeSync;
 use App\Exchanges\Sync\ReconcileBalances;
+use App\Exchanges\Sync\SyncOutcome;
 use App\Ledger\Holdings;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
@@ -267,7 +268,7 @@ class ReconcileBalancesTest extends TestCase
             '[{"assetName":"BTC","balance":"0.5","available":"0.5","locked":"0"},{"assetName":"ADA","balance":"1200","available":"1200","locked":"0"}]',
         )]);
 
-        $this->assertTrue(app(ExchangeSync::class)->run($this->exchange));
+        $this->assertSame(SyncOutcome::Synced, app(ExchangeSync::class)->run($this->exchange));
 
         $mismatch = $this->mismatches()->sole();
         $this->assertSame(['Cardano', '200'], [$mismatch->data['asset'], $mismatch->data['difference']]);
@@ -279,7 +280,7 @@ class ReconcileBalancesTest extends TestCase
         Http::fake(['*/v3/accounts/me/balances' => Http::response('{"code":"InvalidAPIKey","message":"invalid api key"}', 401)]);
         ExchangeBalance::factory()->for($this->exchange)->of('BTC', '9')->create();
 
-        $this->assertFalse(app(ExchangeSync::class)->run($this->exchange));
+        $this->assertSame(SyncOutcome::Failed, app(ExchangeSync::class)->run($this->exchange));
 
         $this->assertCount(0, $this->mismatches());
     }

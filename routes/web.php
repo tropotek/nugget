@@ -35,9 +35,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/transactions/{transaction}/parcels', [SaleParcelController::class, 'update'])->name('transactions.parcels.update');
     Route::delete('/transactions/{transaction}/parcels', [SaleParcelController::class, 'destroy'])->name('transactions.parcels.destroy');
 
-    // The owner only, by OwnerPolicy. The test tries the saved key against the exchange.
+    // The owner only, by OwnerPolicy. The test tries the saved key against the exchange; the sync runs one now.
     Route::resource('exchanges', ExchangeController::class)->except(['show']);
     Route::post('/exchanges/{exchange}/test', [ExchangeController::class, 'test'])->name('exchanges.test');
+    Route::post('/exchanges/{exchange}/sync', [ExchangeController::class, 'sync'])->name('exchanges.sync');
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

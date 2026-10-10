@@ -49,6 +49,10 @@
                                     @endunless
                                 </td>
                                 <td class="text-end text-nowrap">
+                                    <form method="POST" action="{{ route('exchanges.sync', $exchange) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-light">Sync now</button>
+                                    </form>
                                     @if ($drivers->can($exchange->driver, App\Exchanges\Contracts\ChecksConnection::class))
                                         <form method="POST" action="{{ route('exchanges.test', $exchange) }}" class="d-inline">
                                             @csrf

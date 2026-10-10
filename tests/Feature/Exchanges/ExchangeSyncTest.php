@@ -7,13 +7,16 @@ use App\Exchanges\Contracts\ReportsBalances;
 use App\Exchanges\Drivers\BtcMarkets;
 use App\Exchanges\ExchangeDrivers;
 use App\Exchanges\Sync\ExchangeSync;
+use App\Exchanges\Sync\SyncOutcome;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\ExchangeBalance;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -52,7 +55,7 @@ class ExchangeSyncTest extends TestCase
 
     private function sync(?Exchange $exchange = null): bool
     {
-        return $this->app->make(ExchangeSync::class)->run($exchange ?? $this->exchange);
+        return $this->app->make(ExchangeSync::class)->run($exchange ?? $this->exchange) === SyncOutcome::Synced;
     }
 
     /**
@@ -305,5 +308,35 @@ class ExchangeSyncTest extends TestCase
         Exchange::query()->delete();
 
         $this->artisan('nugget:sync-exchanges')->expectsOutputToContain('Synced 0 of 0 exchanges.')->assertSuccessful();
+    }
+
+    public function test_an_exchange_is_synced_once_at_a_time(): void
+    {
+        $this->fakeBalances();
+        $lock = Cache::lock("exchange-sync:{$this->exchange->id}", 600);
+        $lock->get();
+
+        $this->assertSame(SyncOutcome::Busy, $this->app->make(ExchangeSync::class)->run($this->exchange));
+        $this->assertNull($this->exchange->refresh()->last_synced_at);
+        $this->assertNull($this->exchange->last_error);
+
+        $this->artisan('nugget:sync-exchanges')->expectsOutputToContain('Synced 0 of 1 exchanges. 1 already being synced.')->assertSuccessful();
+
+        $lock->release();
+
+        // A sync lets go of the exchange when it is done, whether it worked or not.
+        $this->assertTrue($this->sync());
+        $this->assertTrue($this->sync());
+        $this->assertFalse($this->sync(Exchange::factory()->create(['driver' => 'kraken'])));
+        $this->assertTrue(Cache::lock("exchange-sync:{$this->exchange->id}", 600)->get());
+    }
+
+    public function test_the_sync_is_scheduled_every_five_minutes_without_overlapping(): void
+    {
+        $event = collect($this->app->make(Schedule::class)->events())
+            ->sole(fn ($event) => str_contains($event->command, 'nugget:sync-exchanges'));
+
+        $this->assertSame('*/5 * * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
     }
 }

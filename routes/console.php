@@ -9,5 +9,8 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('nugget:fetch-prices')->everyFiveMinutes()->withoutOverlapping(10);
 
+// After the prices in the same minute: the schedule runs its commands one at a time, in this order.
+Schedule::command('nugget:sync-exchanges')->everyFiveMinutes()->withoutOverlapping(10);
+
 // Times are UTC. This one only has to be off the 5-minute marks.
 Schedule::command('nugget:prune-prices')->dailyAt('03:20')->withoutOverlapping(10);

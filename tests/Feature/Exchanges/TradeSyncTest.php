@@ -8,6 +8,7 @@ use App\Exchanges\Contracts\ReportsTrades;
 use App\Exchanges\Drivers\BtcMarkets;
 use App\Exchanges\ExchangeDrivers;
 use App\Exchanges\Sync\ExchangeSync;
+use App\Exchanges\Sync\SyncOutcome;
 use App\Exchanges\Sync\SyncTrades;
 use App\Exchanges\Trade;
 use App\Ledger\Holdings;
@@ -97,7 +98,7 @@ class TradeSyncTest extends TestCase
 
     private function sync(?Exchange $exchange = null): bool
     {
-        return $this->app->make(ExchangeSync::class)->run($exchange ?? $this->exchange);
+        return $this->app->make(ExchangeSync::class)->run($exchange ?? $this->exchange) === SyncOutcome::Synced;
     }
 
     /**
