@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tax-report/{year}', [TaxReportController::class, 'show'])->whereNumber('year')->name('tax-report.show');
     Route::put('/tax-report/{year}', [TaxReportController::class, 'update'])->whereNumber('year')->name('tax-report.update');
     Route::get('/tax-report/{year}/pdf', [TaxReportController::class, 'pdf'])->whereNumber('year')->name('tax-report.pdf');
+    Route::get('/tax-report/{year}/csv', [TaxReportController::class, 'csv'])->whereNumber('year')->name('tax-report.csv');
 
     // TradingView's embedded chart.
     Route::get('/tradingview', TradingViewController::class)->name('tradingview');

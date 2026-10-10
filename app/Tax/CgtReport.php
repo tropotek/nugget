@@ -46,6 +46,14 @@ final readonly class CgtReport
     }
 
     /**
+     * The name a file of the report is downloaded under: "nugget-capital-gains-2024-25.pdf".
+     */
+    public function filename(string $extension): string
+    {
+        return 'nugget-capital-gains-'.str_replace('–', '-', $this->year->label()).'.'.$extension;
+    }
+
+    /**
      * @return Collection<int, Disposal>
      */
     public function disposals(TaxSection $section): Collection

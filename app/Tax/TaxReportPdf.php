@@ -47,12 +47,4 @@ class TaxReportPdf
     {
         return view('tax-report.pdf', ['user' => $user, 'report' => $report, 'generatedAt' => now()])->render();
     }
-
-    /**
-     * The name the file is downloaded under: "nugget-capital-gains-2024-25.pdf".
-     */
-    public static function filename(CgtReport $report, string $extension = 'pdf'): string
-    {
-        return 'nugget-capital-gains-'.str_replace('–', '-', $report->year->label()).'.'.$extension;
-    }
 }

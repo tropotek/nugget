@@ -14,6 +14,7 @@
 <x-layouts.app :title="'Tax report '.$year->label()">
     <x-slot:actions>
         <a href="{{ route('tax-report.pdf', $year->year) }}" class="btn btn-light"><i class="ri-file-pdf-line me-1"></i>PDF</a>
+        <a href="{{ route('tax-report.csv', $year->year) }}" class="btn btn-light"><i class="ri-file-excel-2-line me-1"></i>CSV</a>
         <div class="btn-group" role="group" aria-label="Financial year">
             @foreach ($years as $choice)
                 <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['btn', 'btn-primary' => $choice->year->year === $year->year, 'btn-light' => $choice->year->year !== $year->year])>{{ $choice->year->label() }}</a>
@@ -166,7 +167,7 @@
                         </fieldset>
 
                         <button type="submit" class="btn btn-primary">Save</button>
-                        <span class="form-text ms-2">Saved for {{ $year->label() }} only. The PDF follows it.</span>
+                        <span class="form-text ms-2">Saved for {{ $year->label() }} only. The PDF and the CSV follow it.</span>
                     </form>
                 </div>
             </div>

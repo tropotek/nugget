@@ -10,12 +10,14 @@ use App\Rules\Amount;
 use App\Support\Decimal;
 use App\Support\FinancialYear;
 use App\Tax\CgtCalculator;
+use App\Tax\TaxReportCsv;
 use App\Tax\TaxReportPdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The signed-in user's own capital gains report, a financial year at a time.
@@ -75,8 +77,25 @@ class TaxReportController extends Controller
 
         return response($pdf->pdf($request->user(), $report), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.TaxReportPdf::filename($report).'"',
+            'Content-Disposition' => 'attachment; filename="'.$report->filename('pdf').'"',
         ]);
+    }
+
+    /**
+     * The report's disposal lines as a CSV, written to the response a row at a time.
+     */
+    public function csv(Request $request, int $year, CgtCalculator $calculator, TaxReportCsv $csv): RedirectResponse|StreamedResponse
+    {
+        if ($refused = $this->refuse($year)) {
+            return $refused;
+        }
+
+        $user = $request->user();
+        $report = $calculator->forYear($user, new FinancialYear($year));
+
+        return response()->streamDownload(function () use ($csv, $user, $report) {
+            $csv->write(fopen('php://output', 'w'), $user, $report);
+        }, $report->filename('csv'), ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

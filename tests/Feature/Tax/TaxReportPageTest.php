@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Support\FinancialYear;
 use App\Tax\CgtCalculator;
+use App\Tax\TaxReportCsv;
 use App\Tax\TaxReportPdf;
 use Database\Factories\TransactionFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -604,5 +605,109 @@ class TaxReportPageTest extends TestCase
 
         $this->assertStringContainsString('<td>Crypto, Metal, Other</td>', $all);
         $this->assertStringNotContainsString('left out', $all);
+    }
+
+    // The CSV
+
+    /**
+     * The rows of the year's CSV download.
+     *
+     * @return list<list<string>>
+     */
+    private function csv(int $year = 2025): array
+    {
+        $content = $this->get("/tax-report/{$year}/csv")->assertOk()->streamedContent();
+
+        $this->assertStringStartsWith("\u{FEFF}", $content, 'The file starts with a byte order mark');
+
+        return array_map(fn (string $line) => str_getcsv($line, ',', '"', ''), explode("\n", trim(substr($content, 3))));
+    }
+
+    public function test_the_csv_has_a_row_for_each_disposal_with_every_column_of_the_page(): void
+    {
+        $this->ledger();
+
+        $this->get('/tax-report/2025')->assertSee('href="'.route('tax-report.csv', 2025).'"', false);
+
+        $this->assertSame([
+            ['Financial year', 'Section', 'Asset', 'Symbol', 'Class', 'Acquired', 'Sold', 'Units', 'Unit', 'Cost base', 'Proceeds', 'Gain or loss', 'Held over 12 months', 'Discount applies', 'Estimated cost'],
+            ['2024–25', 'Crypto', 'Bitcoin', $this->bitcoin->symbol, 'Crypto', '2023-01-10', '2024-10-01', '1', 'BTC', '1000.00', '4000.00', '3000.00', 'Yes', 'Yes', 'No'],
+            ['2024–25', 'Crypto', 'Bitcoin', $this->bitcoin->symbol, 'Crypto', '2024-08-01', '2024-11-01', '1', 'BTC', '5000.00', '6500.00', '1500.00', 'No', 'No', 'No'],
+            ['2024–25', 'Crypto', 'Bitcoin', $this->bitcoin->symbol, 'Crypto', '2024-09-01', '2025-02-01', '1', 'BTC', '9000.00', '7000.00', '-2000.00', 'No', 'No', 'No'],
+            ['2024–25', 'Other assets', 'Gold', $this->gold->symbol, 'Metal', '2022-05-05', '2025-03-03', '1', 'oz', '2500.00', '3400.00', '900.00', 'Yes', 'Yes', 'No'],
+        ], $this->csv());
+    }
+
+    public function test_the_csv_is_a_streamed_download_named_for_the_year(): void
+    {
+        $this->ledger();
+
+        $response = $this->get('/tax-report/2025/csv')->assertOk();
+
+        $response->assertStreamed();
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $response->assertHeader('Content-Disposition', 'attachment; filename=nugget-capital-gains-2024-25.csv');
+    }
+
+    public function test_the_csv_gives_dates_by_the_users_calendar_and_marks_estimates_and_long_held_losses(): void
+    {
+        // 23:30 on 9 March in Melbourne, and 00:30 on 11 March a year later.
+        Transaction::factory()->for($this->bitcoin)->buy('1.5', '9000')->estimated()->create(['occurred_at' => '2024-03-09 12:30:00']);
+        Transaction::factory()->for($this->bitcoin)->sell('0.12345678', '4000')->create(['occurred_at' => '2025-03-10 13:30:00']);
+        app(ParcelMatcher::class)->rematch($this->bitcoin);
+
+        $row = $this->csv()[1];
+
+        // Units to their eight places; a loss on a long-held parcel gets no discount.
+        $this->assertSame(['2024-03-09', '2025-03-11', '0.12345678'], array_slice($row, 5, 3));
+        $this->assertSame(['1111.11', '493.83', '-617.28', 'Yes', 'No', 'Yes'], array_slice($row, 9));
+    }
+
+    public function test_the_csv_follows_the_asset_classes_chosen(): void
+    {
+        $this->ledger();
+        $this->put('/tax-report/2025', ['losses_carried_forward' => '0', 'asset_classes' => ['', 'metal']]);
+
+        $rows = $this->csv();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame('Gold', $rows[1][2]);
+    }
+
+    public function test_a_year_with_no_disposals_is_the_headings_alone(): void
+    {
+        $this->ledger();
+
+        $this->assertSame([TaxReportCsv::HEADINGS], $this->csv(2026));
+    }
+
+    public function test_a_name_that_would_be_read_as_a_formula_is_made_text(): void
+    {
+        $this->bitcoin->update(['name' => '=HYPERLINK("http://example.com","Bitcoin")']);
+        $this->gold->update(['name' => 'Gold, "bars"']);
+        $this->ledger();
+
+        $rows = $this->csv();
+
+        $this->assertSame('\'=HYPERLINK("http://example.com","Bitcoin")', $rows[1][2]);
+        // A comma and quotes are the CSV's own business, and a negative amount stays a number.
+        $this->assertSame('Gold, "bars"', $rows[4][2]);
+        $this->assertSame('-2000.00', $rows[3][11]);
+    }
+
+    public function test_a_closed_year_or_a_guest_gets_no_csv_and_it_is_the_users_own(): void
+    {
+        $this->ledger();
+        $theirs = Asset::factory()->create(['name' => 'Their coin', 'class' => AssetClass::Crypto]);
+        $this->add($theirs, '2024-08-01', Transaction::factory()->buy('1', '100'));
+        $this->add($theirs, '2024-11-01', Transaction::factory()->sell('1', '99999'));
+
+        $this->assertNotContains('Their coin', array_column($this->csv(), 2));
+        $this->get('/tax-report/2024/csv')->assertRedirect(route('tax-report.index'));
+        $this->get('/tax-report/1999/csv')->assertNotFound();
+
+        auth()->logout();
+
+        $this->get('/tax-report/2025/csv')->assertRedirect(route('login'));
     }
 }
