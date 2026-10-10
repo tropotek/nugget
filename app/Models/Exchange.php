@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A user's account on an exchange, reached through the ccxt driver named in
@@ -51,6 +52,16 @@ class Exchange extends Model implements Owned
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The assets priced by a market on this exchange.
+     *
+     * @return HasMany<Asset, $this>
+     */
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class);
     }
 
     public function ownerId(): int

@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AssetClass;
+use App\Enums\PricedBy;
 use App\Enums\Role;
+use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -107,6 +110,44 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($count, Exchange::count());
     }
 
+    public function test_the_admin_gets_assets_of_every_class_and_price_source(): void
+    {
+        $this->runSeeder();
+
+        $assets = User::where('email', 'admin@example.com')->sole()->assets;
+
+        $this->assertEqualsCanonicalizing(
+            ['Bitcoin', 'Cardano', 'Gold bullion', 'Silver bullion', 'Prospected gold', 'Coin collection'],
+            $assets->pluck('name')->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            [AssetClass::Crypto, AssetClass::Metal, AssetClass::Other],
+            $assets->pluck('class')->unique()->values()->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            [PricedBy::Exchange, PricedBy::Feed, PricedBy::Nothing],
+            $assets->map->pricedBy()->unique()->values()->all(),
+        );
+
+        $bitcoin = $assets->firstWhere('name', 'Bitcoin');
+        $this->assertSame('BTC Markets', $bitcoin->exchange->label);
+        $this->assertSame('BTC/AUD', $bitcoin->market_id);
+        $this->assertSame('g', $assets->firstWhere('name', 'Prospected gold')->unit);
+        $this->assertFalse($assets->firstWhere('name', 'Coin collection')->in_total);
+
+        $this->assertSame(1, User::where('email', 'member@example.com')->sole()->assets()->count());
+    }
+
+    public function test_seeding_again_adds_no_assets(): void
+    {
+        $this->runSeeder();
+        $count = Asset::count();
+
+        $this->runSeeder();
+
+        $this->assertSame($count, Asset::count());
+    }
+
     public function test_it_seeds_nothing_in_production(): void
     {
         $this->app['env'] = 'production';
@@ -115,5 +156,6 @@ class DatabaseSeederTest extends TestCase
 
         $this->assertSame(0, User::count());
         $this->assertSame(0, Exchange::count());
+        $this->assertSame(0, Asset::count());
     }
 }
