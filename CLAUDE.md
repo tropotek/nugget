@@ -10,14 +10,27 @@ The design and the task list live in `_notes/laravel-rewrite/` (gitignored). `RE
 
 ## Commands
 
-There is no PHP with SQLite or Composer on the host. Until task 01 adds this repo's own Docker setup, run PHP through the wicket dev image:
+There is no PHP with SQLite or Composer on the host. Everything runs in the dev containers (`docker-compose.yml`):
 
 ```bash
-docker run --rm -v "$PWD":/app -w /app wicket-dev:latest composer install
-docker run --rm -v "$PWD":/app -w /app wicket-dev:latest php artisan migrate
-docker run --rm -v "$PWD":/app -w /app wicket-dev:latest php artisan test
-docker run --rm -v "$PWD":/app -w /app wicket-dev:latest vendor/bin/pint
+docker compose up -d                              # app, vite, scheduler, mailpit
+docker compose exec app composer install
+docker compose exec app php artisan migrate
+docker compose exec app composer test
+docker compose exec app vendor/bin/pint
+docker compose build app                          # after changing the Dockerfile
 ```
+
+| Service | Where | What |
+|---|---|---|
+| `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
+| `vite` | http://localhost:5778 | Vite dev server, hot reload |
+| `scheduler` | — | `php artisan schedule:work` |
+| `mailpit` | http://localhost:8779 | catches all outgoing mail |
+
+The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
+
+The containers load `.env` as real environment variables, so a change to `.env` needs `docker compose up -d` to recreate them, and `phpunit.xml` forces its test settings with `<server force="true">`.
 
 `composer test` clears the config cache and runs the suite. Tests use PHPUnit (not Pest) against an in-memory SQLite database.
 
@@ -26,6 +39,7 @@ docker run --rm -v "$PWD":/app -w /app wicket-dev:latest vendor/bin/pint
 - `app/`: application code, `App\` namespace.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
+- `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
 - `tests/Feature`, `tests/Unit`: PHPUnit tests.
 - `_notes/`: local planning docs, gitignored.
 - `version.md`: the app version.

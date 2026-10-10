@@ -1,0 +1,76 @@
+name: nugget
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: nugget-dev:latest
+    container_name: nugget-app
+    working_dir: /app
+    env_file: .env
+    environment:
+      OCTANE_SERVER: frankenphp
+    ports:
+      - "${APP_PORT:-8778}:${APP_PORT:-8778}"
+    volumes:
+      - ./:/app
+    command: ["sh", "-c", "[ -d vendor ] || composer install --no-interaction --prefer-dist; php artisan octane:frankenphp --caddyfile=docker/Caddyfile --host=0.0.0.0 --port=${APP_PORT:-8778} --watch --workers=1 --max-requests=500"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${APP_PORT:-8778}/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    tty: true
+
+  vite:
+    image: nugget-dev:latest
+    depends_on:
+      - app
+    container_name: nugget-vite
+    working_dir: /app
+    env_file: .env
+    ports:
+      - "${VITE_PORT:-5778}:${VITE_PORT:-5778}"
+    volumes:
+      - ./:/app
+    command: ["sh", "-c", "[ -d node_modules ] || npm install; npm run dev -- --host 0.0.0.0 --port ${VITE_PORT:-5778}"]
+    restart: unless-stopped
+    tty: true
+    # Its own check: the image's default polls Caddy's metrics port, which only the app container runs.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost:$${VITE_PORT:-5778}/@vite/client"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # Runs the schedule (exchange sync, price fetch, pruning) once those tasks add entries to it.
+  scheduler:
+    image: nugget-dev:latest
+    depends_on:
+      app:
+        condition: service_healthy
+    container_name: nugget-scheduler
+    working_dir: /app
+    env_file: .env
+    volumes:
+      - ./:/app
+    command: ["php", "artisan", "schedule:work"]
+    restart: unless-stopped
+    # No HTTP server here, so the image's default check (Caddy's metrics port) would always fail.
+    healthcheck:
+      disable: true
+
+  # Catches all outgoing mail. Web UI on MAILPIT_PORT; the app sends to mailpit:1025 inside the network.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nugget-mailpit
+    ports:
+      - "${MAILPIT_PORT:-8779}:8025"
+    restart: unless-stopped
