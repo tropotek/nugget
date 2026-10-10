@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+/*
+| The schedule, run by the `scheduler` container (`php artisan schedule:work`).
+| The 10 is minutes: a lock left by a run that died is dropped after that long.
+*/
+
+Schedule::command('nugget:fetch-prices')->everyFiveMinutes()->withoutOverlapping(10);

@@ -26,20 +26,16 @@ class FeedPriceSource implements PriceSource
         'kg' => '1000',
     ];
 
+    /** @var array<string, Quote> what the feed gave for each symbol read so far, before any conversion */
+    private array $quotes = [];
+
     public function quote(Asset $asset): ?Quote
     {
         try {
             $symbol = $asset->feed_symbol ?? throw new RuntimeException('it has no feed symbol');
 
-            $quotes = Http::timeout(10)
-                ->acceptJson()
-                ->get(rtrim(config('nugget.prices.feed_url'), '/').'/'.$symbol)
-                ->throw()
-                ->json();
-
-            // The first platform's first spread profile.
-            $price = $quotes[0]['spreadProfilePrices'][0] ?? throw new RuntimeException('the feed has no quote for it');
-            $quote = Quote::of($price['bid'] ?? null, $price['ask'] ?? null);
+            // A symbol is read once in the life of this object, so two assets on one symbol cost one call.
+            $quote = $this->quotes[$symbol] ??= $this->read($symbol);
 
             return new Quote($this->perUnit($quote->bid, $asset), $this->perUnit($quote->ask, $asset));
         } catch (Throwable $e) {
@@ -47,6 +43,22 @@ class FeedPriceSource implements PriceSource
 
             return null;
         }
+    }
+
+    /**
+     * The first platform's first spread profile.
+     */
+    private function read(string $symbol): Quote
+    {
+        $quotes = Http::timeout(10)
+            ->acceptJson()
+            ->get(rtrim(config('nugget.prices.feed_url'), '/').'/'.$symbol)
+            ->throw()
+            ->json();
+
+        $price = $quotes[0]['spreadProfilePrices'][0] ?? throw new RuntimeException('the feed has no quote for it');
+
+        return Quote::of($price['bid'] ?? null, $price['ask'] ?? null);
     }
 
     /**

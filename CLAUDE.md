@@ -20,6 +20,7 @@ docker compose exec app php artisan db:seed                # add any missing dev
 docker compose exec app composer fresh                     # wipe the database, migrate and seed
 docker compose exec app php artisan nugget:rematch         # rebuild parcels and disposals (--asset=ID, --year=2025)
 docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
+docker compose exec app php artisan nugget:fetch-prices    # fetch and store every active asset's price now (--asset=ID)
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
@@ -29,7 +30,7 @@ docker compose build app                          # after changing the Dockerfil
 |---|---|---|
 | `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
 | `vite` | http://localhost:5778 | Vite dev server, hot reload |
-| `scheduler` | — | `php artisan schedule:work` |
+| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed every 5 minutes |
 | `mailpit` | http://localhost:8779 | catches all outgoing mail |
 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
@@ -73,6 +74,8 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A transaction from an exchange is locked (`$transaction->isLocked()`): only its notes change and it is never deleted by hand.
 - A date and time typed into a form is in the user's timezone: parse it with the user's `timezone` and store it in UTC.
 - A price (`App\Models\Price`) is the AUD bid and ask for one unit of an asset. An intraday row's `at` is the moment it was fetched. A day row is one per day in the owner's timezone and its `at` is that date at 00:00:00, made with `Price::day()`: a date, not a moment, so read it with `->at->toDateString()` and never through `LocalTime` or `<x-date>`.
+- Store a quote with `App\Prices\PriceRecorder::record($asset, $quote, $at)`, which writes the intraday row and replaces the day row together. Nothing else writes a price.
+- Scheduled commands are listed in `routes/console.php`, each `withoutOverlapping`. A command that works through many assets or exchanges catches each one's failure, logs it and goes on.
 - An asset's latest price is its newest day row (`Price::latestPerAsset()`), not its newest intraday row: intraday rows are pruned.
 - Read an asset's current price with `App\Prices\PriceSources::quote($asset)`: an `App\Prices\Quote` (bid and ask) or null. A price source never throws: it logs a warning and returns null.
 - Each exchange has Nugget's own driver in `App\Exchanges\Drivers`, written against that exchange's API with Laravel's HTTP client. There is no ccxt and no other exchange library. Get an exchange's driver with `App\Exchanges\ExchangeDrivers::for($exchange)`.

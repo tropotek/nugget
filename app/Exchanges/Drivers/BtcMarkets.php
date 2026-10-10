@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Http;
  */
 class BtcMarkets implements ExchangeDriver, QuotesPrices
 {
+    /** @var array<string, Quote> the tickers read so far, by market */
+    private array $quotes = [];
+
     public function __construct(private readonly Exchange $exchange) {}
 
     public static function label(): string
@@ -23,9 +26,16 @@ class BtcMarkets implements ExchangeDriver, QuotesPrices
     }
 
     /**
-     * A market with nobody bidding or asking is quoted at its last trade.
+     * A market with nobody bidding or asking is quoted at its last trade. A
+     * market is read once in the life of the driver, so two assets on one
+     * market cost one call.
      */
     public function quote(string $market): Quote
+    {
+        return $this->quotes[$market] ??= $this->ticker($market);
+    }
+
+    private function ticker(string $market): Quote
     {
         $ticker = $this->public()->get('markets/'.rawurlencode($market).'/ticker')->throw()->json();
 
