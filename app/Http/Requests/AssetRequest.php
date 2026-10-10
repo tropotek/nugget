@@ -4,7 +4,10 @@ namespace App\Http\Requests;
 
 use App\Enums\AssetClass;
 use App\Enums\PricedBy;
+use App\Exchanges\Markets;
 use App\Models\Asset;
+use App\Models\Exchange;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
@@ -48,12 +51,31 @@ class AssetRequest extends FormRequest
             'unit' => [Rule::excludeIf($fixed), 'required', 'string', 'max:16'],
             'priced_by' => ['required', Rule::enum(PricedBy::class)],
             'exchange_id' => [$exchange, 'required', 'integer', Rule::exists('exchanges', 'id')->where('user_id', $this->user()->id)],
-            'market_id' => [$exchange, 'required', 'string', 'max:64'],
+            'market_id' => [$exchange, 'required', 'string', 'max:64', $this->marketOnExchange(...)],
             'feed_symbol' => [$feed, 'required', 'string', 'max:64'],
             'in_total' => ['boolean'],
             'archived' => [Rule::excludeIf(! $asset), 'boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    /**
+     * The market has to be one the exchange lists and prices in AUD. It
+     * passes when the exchange's markets are not known, and when it is the
+     * market the asset already has, which may since have been delisted.
+     */
+    private function marketOnExchange(string $attribute, mixed $value, Closure $fail): void
+    {
+        $asset = $this->route('asset');
+        $exchange = Exchange::query()->where('user_id', $this->user()->id)->find($this->input('exchange_id'));
+
+        if (! $exchange || ! is_string($value) || ($asset?->exchange_id === $exchange->id && $asset->market_id === $value)) {
+            return;
+        }
+
+        if (app(Markets::class)->prices($exchange, $value) === false) {
+            $fail("{$exchange->label} has no market called {$value} that is priced in AUD.");
+        }
     }
 
     /**

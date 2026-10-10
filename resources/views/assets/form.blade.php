@@ -1,8 +1,12 @@
 {{--
     The add and edit form. $fixed: the asset has transactions, so its symbol and unit cannot change and it cannot be deleted.
-    resources/js/asset-form.js shows only the fields of the chosen price source.
+    $markets: the App\Exchanges\Market lists to offer, by driver.
+    resources/js/asset-form.js shows only the fields of the chosen price source, and offers the markets of the chosen exchange.
 --}}
-@php($pricedBy = old('priced_by', $asset->pricedBy()->value))
+@php
+    $pricedBy = old('priced_by', $asset->pricedBy()->value);
+    $chosenExchange = $exchanges->firstWhere('id', (int) old('exchange_id', $asset->exchange_id));
+@endphp
 
 <x-layouts.app :title="$asset->exists ? 'Edit asset' : 'Add asset'">
     <div class="row">
@@ -82,10 +86,10 @@
                         <div class="row" data-priced-by="exchange">
                             <div class="col-sm-6 mb-3">
                                 <label for="exchange_id" class="form-label">Exchange</label>
-                                <select id="exchange_id" name="exchange_id" @class(['form-select', 'is-invalid' => $errors->has('exchange_id')])>
+                                <select id="exchange_id" name="exchange_id" data-exchange-select @class(['form-select', 'is-invalid' => $errors->has('exchange_id')])>
                                     <option value="">{{ $exchanges->isEmpty() ? 'You have no exchanges' : 'Choose an exchange' }}</option>
                                     @foreach ($exchanges as $exchange)
-                                        <option value="{{ $exchange->id }}"{{ $exchange->id === (int) old('exchange_id', $asset->exchange_id) ? ' selected' : '' }}>{{ $exchange->label }}</option>
+                                        <option value="{{ $exchange->id }}" data-markets="markets-{{ $exchange->driver }}"{{ $exchange->is($chosenExchange) ? ' selected' : '' }}>{{ $exchange->label }}</option>
                                     @endforeach
                                 </select>
                                 @error('exchange_id')
@@ -96,7 +100,17 @@
                             <div class="col-sm-6 mb-3">
                                 <label for="market_id" class="form-label">Market</label>
                                 <input type="text" id="market_id" name="market_id" value="{{ old('market_id', $asset->market_id) }}"
-                                    maxlength="64" placeholder="BTC-AUD" @class(['form-control', 'is-invalid' => $errors->has('market_id')])>
+                                    maxlength="64" placeholder="BTC-AUD" autocomplete="off" data-market-input
+                                    list="{{ $chosenExchange ? 'markets-'.$chosenExchange->driver : '' }}"
+                                    @class(['form-control', 'is-invalid' => $errors->has('market_id')])>
+                                {{-- The exchange's AUD markets, offered as the market is typed. --}}
+                                @foreach ($markets as $driver => $list)
+                                    <datalist id="markets-{{ $driver }}">
+                                        @foreach ($list as $market)
+                                            <option value="{{ $market->id }}"></option>
+                                        @endforeach
+                                    </datalist>
+                                @endforeach
                                 @error('market_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

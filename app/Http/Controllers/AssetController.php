@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\AssetClass;
 use App\Enums\ChartRange;
 use App\Enums\PricedBy;
+use App\Exchanges\Markets;
 use App\Http\Requests\AssetRequest;
 use App\Ledger\Holding;
 use App\Ledger\Holdings;
 use App\Ledger\TransactionSearch;
 use App\Ledger\Valuations;
 use App\Models\Asset;
+use App\Models\Exchange;
 use App\Prices\PriceChart;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -122,11 +124,18 @@ class AssetController extends Controller
 
     private function form(Request $request, Asset $asset): View
     {
+        $exchanges = $request->user()->exchanges()->orderBy('label')->get();
+
         return view('assets.form', [
             'asset' => $asset,
             'classes' => AssetClass::cases(),
             'sources' => PricedBy::cases(),
-            'exchanges' => $request->user()->exchanges()->orderBy('label')->get(),
+            'exchanges' => $exchanges,
+            // The markets to offer, by driver. A driver whose list could not be read is left out.
+            'markets' => $exchanges->unique('driver')
+                ->mapWithKeys(fn (Exchange $exchange) => [$exchange->driver => app(Markets::class)->inAud($exchange)])
+                ->filter()
+                ->all(),
             'fixed' => $asset->exists && $asset->hasTransactions(),
         ]);
     }

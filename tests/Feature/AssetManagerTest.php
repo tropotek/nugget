@@ -10,6 +10,7 @@ use App\Models\Exchange;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AssetManagerTest extends TestCase
@@ -378,5 +379,90 @@ class AssetManagerTest extends TestCase
 
         $this->assertNotNull($asset->fresh());
         $this->assertSame(2, $asset->transactions()->count());
+    }
+
+    // The exchange's markets
+
+    private function fakeTheMarkets(): void
+    {
+        Http::fake(['https://api.btcmarkets.net/v3/markets' => Http::response(file_get_contents(base_path('tests/Fixtures/btcmarkets/markets.json')))]);
+    }
+
+    public function test_the_form_offers_the_aud_markets_of_the_users_exchanges(): void
+    {
+        $this->fakeTheMarkets();
+        $exchange = Exchange::factory()->for($this->user)->create();
+        Exchange::factory()->for($this->user)->create(['label' => 'Second account']);
+        $asset = Asset::factory()->onExchange($exchange, 'BTC-AUD')->create();
+
+        $this->actingAs($this->user)->get(route('assets.edit', $asset))
+            ->assertOk()
+            ->assertSee('<datalist id="markets-btcmarkets">', false)
+            ->assertSee('<option value="BTC-AUD"></option>', false)
+            ->assertDontSee('<option value="ETH-BTC"></option>', false)
+            ->assertSee('list="markets-btcmarkets"', false)
+            ->assertSee('data-markets="markets-btcmarkets"', false)
+            ->assertViewHas('markets', fn (array $markets) => array_keys($markets) === ['btcmarkets'] && count($markets['btcmarkets']) === 44);
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_the_form_works_when_the_markets_cannot_be_read(): void
+    {
+        Http::fake(['*' => Http::response('Service unavailable', 503)]);
+        Exchange::factory()->for($this->user)->create();
+
+        $this->actingAs($this->user)->get('/assets/create')
+            ->assertOk()
+            ->assertSee('name="market_id"', false)
+            ->assertDontSee('<datalist', false);
+    }
+
+    public function test_a_market_the_exchange_does_not_price_in_aud_is_refused(): void
+    {
+        $this->fakeTheMarkets();
+        $exchange = Exchange::factory()->for($this->user)->create(['label' => 'My account']);
+
+        foreach (['BTC/AUD', 'ETH-BTC', 'NOPE-AUD'] as $market) {
+            $this->actingAs($this->user)
+                ->post('/assets', $this->form(['priced_by' => 'exchange', 'exchange_id' => $exchange->id, 'market_id' => $market]))
+                ->assertSessionHasErrors(['market_id' => "My account has no market called {$market} that is priced in AUD."]);
+        }
+
+        $this->assertSame(0, $this->user->assets()->count());
+
+        $this->actingAs($this->user)
+            ->post('/assets', $this->form(['priced_by' => 'exchange', 'exchange_id' => $exchange->id, 'market_id' => 'BTC-AUD']))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_any_market_is_taken_when_the_markets_cannot_be_read(): void
+    {
+        Http::fake(['*' => Http::response('Service unavailable', 503)]);
+        $exchange = Exchange::factory()->for($this->user)->create();
+
+        $this->actingAs($this->user)
+            ->post('/assets', $this->form(['priced_by' => 'exchange', 'exchange_id' => $exchange->id, 'market_id' => 'NEW-AUD']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('NEW-AUD', $this->user->assets()->sole()->market_id);
+    }
+
+    public function test_an_asset_keeps_a_market_the_exchange_no_longer_lists(): void
+    {
+        $this->fakeTheMarkets();
+        $exchange = Exchange::factory()->for($this->user)->create();
+        $asset = Asset::factory()->onExchange($exchange, 'GONE-AUD')->create(['name' => 'Old coin']);
+        $change = fn (array $changes) => $this->form(['priced_by' => 'exchange', 'exchange_id' => $exchange->id, ...$changes]);
+
+        $this->actingAs($this->user)
+            ->put(route('assets.update', $asset), $change(['name' => 'Older coin', 'market_id' => 'GONE-AUD']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Older coin', $asset->refresh()->name);
+
+        $this->actingAs($this->user)
+            ->put(route('assets.update', $asset), $change(['market_id' => 'WENT-AUD']))
+            ->assertSessionHasErrors('market_id');
     }
 }
