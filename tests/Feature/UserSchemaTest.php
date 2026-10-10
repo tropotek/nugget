@@ -16,7 +16,7 @@ class UserSchemaTest extends TestCase
     public function test_the_users_table_has_the_expected_columns(): void
     {
         $this->assertEqualsCanonicalizing(
-            ['id', 'name', 'email', 'password', 'role', 'timezone', 'remember_token', 'created_at', 'updated_at'],
+            ['id', 'name', 'email', 'password', 'role', 'active', 'timezone', 'remember_token', 'created_at', 'updated_at'],
             Schema::getColumnListing('users'),
         );
     }

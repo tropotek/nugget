@@ -23,8 +23,8 @@ class PasswordResetLinkController extends Controller
     }
 
     /**
-     * Always answers the same, whether or not the email has an account, so the
-     * form can't be used to discover accounts.
+     * Always answers the same, whether or not the email has an active account,
+     * so the form can't be used to discover accounts.
      *
      * @throws ValidationException
      */
@@ -45,7 +45,7 @@ class PasswordResetLinkController extends Controller
         // reveal which emails exist. Log it and reply as normal.
         if (! $throttled) {
             try {
-                Password::sendResetLink($request->only('email'));
+                Password::sendResetLink([...$request->only('email'), 'active' => true]);
             } catch (Throwable $e) {
                 report($e);
             }

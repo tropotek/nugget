@@ -44,7 +44,7 @@ class NewPasswordController extends Controller
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            [...$request->only('email', 'password', 'password_confirmation', 'token'), 'active' => true],
             function (User $user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
@@ -59,7 +59,7 @@ class NewPasswordController extends Controller
             return redirect()->route('login')->with('status', __($status));
         }
 
-        // An unknown email gets the bad token message, so the form can't be
+        // An unknown or inactive email gets the bad token message, so the form can't be
         // used to discover accounts.
         if ($status == Password::INVALID_USER) {
             $status = Password::INVALID_TOKEN;

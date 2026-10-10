@@ -50,7 +50,8 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // An inactive user fails with the same message as a wrong password.
+        if (! Auth::attempt([...$this->only('email', 'password'), 'active' => true], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey(), config('nugget.login.lockout_minutes') * 60);
 
             throw ValidationException::withMessages([

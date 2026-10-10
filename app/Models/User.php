@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * role is deliberately not fillable: set it explicitly.
+ * role and active are deliberately not fillable: set them explicitly.
  */
 #[Fillable(['name', 'email', 'password', 'timezone'])]
 #[Hidden(['password', 'remember_token'])]
@@ -26,6 +26,7 @@ class User extends Authenticatable
     /** @var array<string, mixed> */
     protected $attributes = [
         'role' => 'member',
+        'active' => true,
         'timezone' => self::DEFAULT_TIMEZONE,
     ];
 
@@ -39,6 +40,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'role' => Role::class,
+            'active' => 'boolean',
         ];
     }
 

@@ -68,5 +68,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Dates are stored in UTC and shown in the reader's timezone. In a view use `<x-date :value="…" />` (it takes a `format`); elsewhere use `App\Support\LocalTime::of($date)`. Never format a stored date directly.
 - Emails are stored in lower case and SQLite compares them exactly, so lower-case an email before looking a user up by it.
 - `laravel/breeze` is a dev dependency used only as a source of stubs to copy from `vendor/laravel/breeze/stubs/default`. Never run `breeze:install`: it would replace the layout and the Vite setup with Tailwind.
-- A user's `role` (`App\Enums\Role`: admin or member) is not mass assignable; set it with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
+- A user's `role` (`App\Enums\Role`: admin or member) and `active` flag are not mass assignable; set them with `forceFill`. Check for an admin with `$user->isAdmin()` or the `admin` Gate ability.
+- Users are deactivated, never deleted. An inactive user cannot sign in or reset a password, and is told nothing that an unknown email would not be.
+- A model that belongs to a user implements `App\Models\Contracts\Owned`. That gives it `App\Policies\OwnerPolicy` with no policy class of its own: the owner only, with no admin bypass. Authorise every read and write of one with `Gate::authorize`.
 - Run Pint before committing.
