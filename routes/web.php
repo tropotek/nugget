@@ -25,8 +25,8 @@ Route::middleware('auth')->group(function () {
     // The owner only, by OwnerPolicy. An asset's own page is still to come.
     Route::resource('assets', AssetController::class)->except(['show']);
 
-    // The owner only, by OwnerPolicy. The list of transactions is still to come.
-    Route::resource('transactions', TransactionController::class)->only(['create', 'store', 'edit', 'update', 'destroy']);
+    // The owner only, by OwnerPolicy.
+    Route::resource('transactions', TransactionController::class)->except(['show']);
 
     // Admin only, by UserPolicy. Users are deactivated, not deleted.
     Route::resource('users', UserController::class)->except(['show', 'destroy']);

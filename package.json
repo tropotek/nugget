@@ -19,6 +19,7 @@
         "@popperjs/core": "^2.11.8",
         "apexcharts": "^8.0.0",
         "bootstrap": "^5.3.8",
+        "htmx.org": "^2.0.11",
         "jquery": "^4.0.0",
         "simplebar": "^6.3.3"
     }

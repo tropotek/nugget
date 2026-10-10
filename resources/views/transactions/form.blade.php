@@ -138,7 +138,7 @@
                         </div>
 
                         <button type="submit" class="btn btn-primary">{{ $editing ? 'Save' : 'Add transaction' }}</button>
-                        <a href="{{ route('assets.index') }}" class="btn btn-light">Cancel</a>
+                        <a href="{{ route('transactions.index') }}" class="btn btn-light">Cancel</a>
                     </form>
                 </div>
             </div>

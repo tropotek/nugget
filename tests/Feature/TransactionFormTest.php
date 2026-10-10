@@ -117,7 +117,7 @@ class TransactionFormTest extends TestCase
     {
         $this->post('/transactions', $this->form(['notes' => 'First one.']))
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('assets.index'))
+            ->assertRedirect(route('transactions.index'))
             ->assertSessionHas('success', 'Bitcoin: Buy of 0.5 BTC recorded.');
 
         $buy = $this->asset->transactions()->sole();
@@ -342,7 +342,7 @@ class TransactionFormTest extends TestCase
 
         $this->put("/transactions/{$buy->id}", $this->form(['asset_id' => $other->id, 'units' => '0.75', 'occurred_at' => '2024-02-01T08:00:00']))
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('assets.index'))
+            ->assertRedirect(route('transactions.index'))
             ->assertSessionHas('success', 'Bitcoin: Buy of 0.75 BTC saved.');
 
         $buy->refresh();
@@ -381,7 +381,7 @@ class TransactionFormTest extends TestCase
 
         $this->put("/transactions/{$trade->id}", ['type' => 'sell', 'units' => '9', 'notes' => 'Bought on the dip.'])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('assets.index'));
+            ->assertRedirect(route('transactions.index'));
 
         $trade->refresh();
         $this->assertSame(TransactionType::Buy, $trade->type);
@@ -411,7 +411,7 @@ class TransactionFormTest extends TestCase
         $second = $this->add('2024-02-10', Transaction::factory()->buy('0.25', '110000'));
 
         $this->delete("/transactions/{$second->id}")
-            ->assertRedirect(route('assets.index'))
+            ->assertRedirect(route('transactions.index'))
             ->assertSessionHas('success', 'Bitcoin: Buy of 0.25 BTC deleted.');
 
         $this->assertNull($second->fresh());

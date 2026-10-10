@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransactionSource;
 use App\Enums\TransactionType;
 use App\Http\Requests\TransactionRequest;
 use App\Ledger\InsufficientUnits;
 use App\Ledger\InvalidParcelPick;
 use App\Ledger\Ledger;
-use App\Models\Asset;
+use App\Ledger\TransactionSearch;
 use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,26 @@ use Illuminate\View\View;
  */
 class TransactionController extends Controller
 {
+    /**
+     * The whole page, or the table alone when htmx asks for #transaction-table
+     * (a filter, a sort or a page).
+     */
+    public function index(Request $request): View
+    {
+        Gate::authorize('viewAny', Transaction::class);
+
+        $search = TransactionSearch::fromInput($request->query(), $request->user());
+        $view = $request->header('HX-Target') === 'transaction-table' ? 'transactions._table' : 'transactions.index';
+
+        return view($view, [
+            'search' => $search,
+            'transactions' => $search->query()->paginate(25)->appends($search->toQuery()),
+            'assets' => $request->user()->assets()->orderBy('name')->get(),
+            'types' => TransactionType::cases(),
+            'sources' => TransactionSource::cases(),
+        ]);
+    }
+
     /**
      * `?asset=ID` chooses the asset to begin with.
      */
@@ -45,7 +66,7 @@ class TransactionController extends Controller
             return back()->withInput()->withErrors(['ledger' => $e->getMessage()]);
         }
 
-        return redirect()->route('assets.index')->with('success', $this->describe($transaction).' recorded.');
+        return redirect()->route('transactions.index')->with('success', $this->describe($transaction).' recorded.');
     }
 
     public function edit(Request $request, Transaction $transaction): View
@@ -64,7 +85,7 @@ class TransactionController extends Controller
             return back()->withInput()->withErrors(['ledger' => $e->getMessage()]);
         }
 
-        return redirect()->route('assets.index')->with('success', $this->describe($transaction).' saved.');
+        return redirect()->route('transactions.index')->with('success', $this->describe($transaction).' saved.');
     }
 
     /**
@@ -83,7 +104,7 @@ class TransactionController extends Controller
             return redirect()->route('transactions.edit', $transaction->id)->with('error', $e->getMessage());
         }
 
-        return redirect()->route('assets.index')->with('success', "{$description} deleted.");
+        return redirect()->route('transactions.index')->with('success', "{$description} deleted.");
     }
 
     /**

@@ -4,5 +4,10 @@
 import './minton/app';
 import './minton/layout';
 
+// htmx swaps part of a page from a link or a form: the transaction table's sorting, paging and filters.
+import htmx from 'htmx.org';
+
 import './asset-form';
 import './transaction-form';
+
+window.htmx = htmx;
