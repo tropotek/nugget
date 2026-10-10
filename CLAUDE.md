@@ -41,7 +41,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 ## Layout
 
 - `app/`: application code, `App\` namespace.
-- `app/Ledger/`: the calculations on the ledger, starting with the parcel matcher.
+- `app/Ledger/`: the calculations on the ledger: the parcel matcher and the holdings query.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
@@ -60,7 +60,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 
 - Money and unit values are never floats. They are `App\Support\Decimal` objects, made with `Decimal::of('1.5')` from a string or an integer; a float throws.
 - A money or unit column is a `string` column cast with `App\Casts\DecimalCast` (`::units()` for 8 places, `::aud()` for 2, `::scale($n)` otherwise). Never a `decimal` column: SQLite hands those back as floats. Never `SUM` one in SQL; load the rows and use `Decimal::sum()`.
-- Holdings are derived from the transaction ledger, never stored.
+- Holdings are derived from the transaction ledger, never stored. Read them with `App\Ledger\Holdings` (`forUser`, `forAsset`), which gives an `App\Ledger\Holding` per asset: units, cost base and average cost. It does no authorising.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.
 - Parcels and disposals are worked out from the transactions. Only `App\Ledger\ParcelMatcher` writes them; nothing else creates, edits or deletes one.
 - Change the ledger through `App\Ledger\Ledger` (`record`, `amend`, `remove`, `pick`, `unpick`): it saves the change and rematches in one database transaction, and throws if the ledger cannot support the change. Code that saves a `Transaction` directly, such as a bulk import, must call `ParcelMatcher::rematch($asset)` itself afterwards. A rematch rebuilds the asset and the same user's other assets with its symbol and unit, which transfers join.
