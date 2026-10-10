@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\DecimalCast;
+use App\Enums\ParcelMatching;
 use App\Enums\TransactionSource;
 use App\Enums\TransactionType;
 use App\Models\Contracts\Owned;
@@ -22,7 +23,9 @@ use LogicException;
  * sign says which way. `total` is the AUD cost with the fee for units coming
  * in, and the AUD proceeds less the fee for units going out.
  *
- * The asset is set through its relation, so it is not fillable.
+ * `matching` is the method a sale was matched by, kept so that a rematch
+ * gives it the same parcels. The matcher sets it; it is not fillable, and nor
+ * is the asset, which is set through its relation.
  */
 #[Fillable(['type', 'occurred_at', 'units', 'unit_price', 'fee', 'total', 'source', 'external_id', 'estimated', 'notes'])]
 class Transaction extends Model implements Owned
@@ -58,6 +61,7 @@ class Transaction extends Model implements Owned
             'total' => DecimalCast::aud(),
             'source' => TransactionSource::class,
             'estimated' => 'boolean',
+            'matching' => ParcelMatching::class,
         ];
     }
 
@@ -89,9 +93,24 @@ class Transaction extends Model implements Owned
         return $this->hasMany(Disposal::class);
     }
 
+    /**
+     * The parcels a sale was matched to by hand.
+     *
+     * @return HasMany<ParcelPick, $this>
+     */
+    public function picks(): HasMany
+    {
+        return $this->hasMany(ParcelPick::class);
+    }
+
     public function ownerId(): int
     {
         return $this->asset->user_id;
+    }
+
+    public function isHandMatched(): bool
+    {
+        return $this->picks->isNotEmpty();
     }
 
     /**

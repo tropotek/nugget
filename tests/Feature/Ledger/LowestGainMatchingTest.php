@@ -39,12 +39,16 @@ class LowestGainMatchingTest extends TestCase
     }
 
     /**
-     * Rematch by a method and give the sale's disposals as [parcel cost base, units, gain], in the order they were written.
+     * Match every sale afresh by a method and give this sale's disposals as
+     * [parcel cost base, units, gain], in the order they were written.
      *
      * @return list<array{string, string, string}>
      */
     private function matched(Transaction $sale, ?ParcelMatching $method): array
     {
+        // A sale keeps the method it was first matched by, so forget it.
+        Transaction::query()->update(['matching' => null]);
+
         app(ParcelMatcher::class)->rematch($this->asset, $method);
 
         return $sale->disposals()->orderBy('id')->get()

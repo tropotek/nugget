@@ -28,7 +28,7 @@ class TransactionSchemaTest extends TestCase
         $this->assertEqualsCanonicalizing(
             [
                 'id', 'asset_id', 'type', 'occurred_at', 'units', 'unit_price', 'fee', 'total', 'source',
-                'external_id', 'estimated', 'notes', 'created_at', 'updated_at',
+                'external_id', 'estimated', 'matching', 'notes', 'created_at', 'updated_at',
             ],
             Schema::getColumnListing('transactions'),
         );

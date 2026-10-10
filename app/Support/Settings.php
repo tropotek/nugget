@@ -87,9 +87,7 @@ class Settings
      */
     public function currentYear(): int
     {
-        $now = now(User::DEFAULT_TIMEZONE);
-
-        return $now->month >= 7 ? $now->year + 1 : $now->year;
+        return FinancialYear::containing(now(), User::DEFAULT_TIMEZONE)->year;
     }
 
     /**
