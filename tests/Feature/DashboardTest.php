@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AssetClass;
 use App\Enums\ChartRange;
 use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
@@ -11,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -226,5 +228,124 @@ class DashboardTest extends TestCase
         $this->holding('Bitcoin', '2', '100', '150');
 
         $this->get('/', ['HX-Request' => 'true', 'HX-Target' => 'dashboard-totals'])->assertDontSee('value-chart');
+    }
+
+    // The holdings table
+
+    public function test_the_holdings_are_listed_by_class_with_a_subtotal_each(): void
+    {
+        $this->holding('Bitcoin', '2', '100', '150', ['class' => AssetClass::Crypto, 'unit' => 'BTC']);
+        $this->holding('Cardano', '1000', '0.5', '0.4', ['class' => AssetClass::Crypto, 'unit' => 'ADA']);
+        $this->holding('Gold bullion', '1', '1000', '1100', ['class' => AssetClass::Metal, 'unit' => 'oz']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSeeInOrder([
+                'id="dashboard-holdings"',
+                'Crypto',
+                // Units, price, value, cost base, gain.
+                'Bitcoin', '2 BTC', '$150.00', '$300.00', '$200.00', '$100.00', '50.00%',
+                'Cardano', '1000 ADA', '$0.40', '$400.00', '$500.00', '-$100.00', '-20.00%',
+                'Crypto subtotal', '$700.00', '$700.00', '$0.00', '0.00%',
+                'Metal',
+                'Gold bullion', '1 oz', '$1,100.00', '$1,100.00', '$1,000.00', '$100.00', '10.00%',
+                'Metal subtotal', '$1,100.00', '$1,000.00', '$100.00', '10.00%',
+            ], false)
+            ->assertDontSee('Other subtotal');
+    }
+
+    public function test_an_asset_with_nothing_held_is_left_off_and_an_archived_one_with_units_is_kept(): void
+    {
+        Asset::factory()->for($this->user)->create(['name' => 'Empty coin']);
+        $this->holding('Old coin', '3', '10', '12', ['archived' => true]);
+        $this->holding('Their coin', '3', '10', '12', user: User::factory()->create());
+
+        $this->get('/')
+            ->assertSeeInOrder(['id="dashboard-holdings"', 'Old coin'], false)
+            ->assertDontSee('Empty coin')
+            ->assertDontSee('Their coin');
+    }
+
+    public function test_a_holding_with_no_price_or_not_in_the_total_is_left_out_of_the_subtotal(): void
+    {
+        $this->holding('Stamps', '1', '850', null, ['class' => AssetClass::Other, 'unit' => 'item']);
+        $this->holding('Coin collection', '1', '5000', '9000', ['class' => AssetClass::Other, 'unit' => 'item', 'in_total' => false]);
+        $this->holding('Wine', '2', '100', '150', ['class' => AssetClass::Other, 'unit' => 'case']);
+
+        $this->get('/')->assertSeeInOrder([
+            'id="dashboard-holdings"',
+            'Coin collection', 'Not in total', '$9,000.00', '$5,000.00',
+            'Stamps', 'No price', '$850.00',
+            'Wine', '$300.00', '$200.00',
+            'Other subtotal', '$300.00', '$200.00', '$100.00', '50.00%',
+        ], false);
+    }
+
+    public function test_each_holding_has_a_sparkline_of_its_price_over_30_days(): void
+    {
+        $rising = $this->holding('Bitcoin', '2', '100', '150');
+        Price::factory()->for($rising)->day('2025-07-01')->quoted('999', '999')->create();
+        Price::factory()->for($rising)->day('2025-07-02')->quoted('100', '100')->create();
+        Price::factory()->for($rising)->day('2025-07-17')->quoted('200', '200')->create();
+        $falling = $this->holding('Cardano', '10', '1', '0.5');
+        Price::factory()->for($falling)->day('2025-07-20')->quoted('0.9', '0.9')->create();
+        $this->holding('Gold', '1', '1000', '1100');
+
+        $response = $this->get('/')->assertOk();
+
+        // 2 July is 30 days back; 1 July is not. $100, $200 and $150 across a 120 by 32 box.
+        $response->assertViewHas('history', fn ($history) => array_map('strval', $history[$rising->id]) === ['100', '200', '150'])
+            ->assertSee('<polyline points="0,31 60,1 120,16"', false)
+            ->assertSee('aria-label="The price of Bitcoin over 30 days"', false)
+            ->assertSeeInOrder(['aria-label="The price of Bitcoin over 30 days"', 'class="text-success"'], false)
+            ->assertSeeInOrder(['aria-label="The price of Cardano over 30 days"', 'class="text-danger"'], false)
+            // One price makes no line.
+            ->assertDontSee('aria-label="The price of Gold over 30 days"', false);
+    }
+
+    public function test_a_user_with_nothing_held_is_told_so(): void
+    {
+        $this->get('/')->assertSee('Nothing is held yet.');
+    }
+
+    public function test_the_holdings_refresh_by_htmx_and_are_sent_alone(): void
+    {
+        $bitcoin = $this->holding('Bitcoin', '2', '100', '150');
+
+        $this->get('/')->assertSee(
+            '<div class="card" id="dashboard-holdings" hx-get="'.route('dashboard').'" hx-trigger="every 60s" hx-target="#dashboard-holdings" hx-swap="outerHTML">',
+            false,
+        );
+
+        $bitcoin->prices()->update(['bid' => '175.00000000']);
+
+        $this->get('/', ['HX-Request' => 'true', 'HX-Target' => 'dashboard-holdings'])
+            ->assertOk()
+            ->assertSee('id="dashboard-holdings"', false)
+            ->assertSee('$350.00')
+            ->assertDontSee('page-title', false)
+            ->assertDontSee('dashboard-totals')
+            ->assertDontSee('value-chart');
+    }
+
+    public function test_the_number_of_queries_does_not_grow_with_the_holdings(): void
+    {
+        $count = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->get('/', ['HX-Target' => 'dashboard-holdings'])->assertOk();
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $this->holding('Bitcoin', '2', '100', '150');
+        $forOne = $count();
+
+        foreach (['Cardano', 'Gold', 'Silver'] as $name) {
+            $this->holding($name, '2', '100', '150');
+        }
+
+        $this->assertSame($forOne, $count());
     }
 }

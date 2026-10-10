@@ -2,22 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AssetClass;
 use App\Enums\ChartRange;
 use App\Ledger\PortfolioValue;
 use App\Ledger\Valuation;
 use App\Ledger\Valuations;
 use App\Ledger\ValueChart;
+use App\Models\Price;
 use App\Models\User;
 use App\Support\Decimal;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    /** How many days of prices a holding's sparkline shows. */
+    private const SPARKLINE_DAYS = 30;
+
     /**
-     * The signed-in user's portfolio. htmx asks for the totals alone, to
-     * refresh them as the prices move, and for the chart alone when its
-     * range changes.
+     * The signed-in user's portfolio. htmx asks for the totals or the
+     * holdings alone, to refresh them as the prices move, and for the chart
+     * alone when its range changes.
      */
     public function __invoke(Request $request, Valuations $valuations, ValueChart $chart): View
     {
@@ -29,22 +36,26 @@ class DashboardController extends Controller
             return view('dashboard._chart', ['range' => $range, 'points' => $chart->points($user, $range)]);
         }
 
-        $totals = $this->totals($user, $valuations);
+        $all = $valuations->forUser($user);
 
-        if ($target === 'dashboard-totals') {
-            return view('dashboard._totals', $totals);
-        }
-
-        return view('dashboard.index', [...$totals, 'range' => $range, 'points' => $chart->points($user, $range)]);
+        return match ($target) {
+            'dashboard-totals' => view('dashboard._totals', $this->totals($user, $all)),
+            'dashboard-holdings' => view('dashboard._holdings', $this->holdings($user, $all)),
+            default => view('dashboard.index', [
+                ...$this->totals($user, $all),
+                ...$this->holdings($user, $all),
+                'range' => $range,
+                'points' => $chart->points($user, $range),
+            ]),
+        };
     }
 
     /**
+     * @param  Collection<int, Valuation>  $all
      * @return array<string, mixed>
      */
-    private function totals(User $user, Valuations $valuations): array
+    private function totals(User $user, Collection $all): array
     {
-        $all = $valuations->forUser($user);
-
         return [
             'totals' => PortfolioValue::of($all),
             // An inactive exchange is not synced, so its balance is not known to be there.
@@ -53,6 +64,33 @@ class DashboardController extends Controller
             'pricedAt' => $all
                 ->filter(fn (Valuation $valuation) => $valuation->isPriced() && $valuation->holding->asset->in_total && ! $valuation->holding->isEmpty())
                 ->min(fn (Valuation $valuation) => $valuation->price->updated_at),
+        ];
+    }
+
+    /**
+     * The assets with units held, an archived one included, by class in the
+     * order of AssetClass, with each one's bids of the last 30 days.
+     *
+     * @param  Collection<int, Valuation>  $all
+     * @return array<string, mixed>
+     */
+    private function holdings(User $user, Collection $all): array
+    {
+        $held = $all->reject(fn (Valuation $valuation) => $valuation->holding->isEmpty());
+        $byClass = $held->groupBy(fn (Valuation $valuation) => $valuation->holding->asset->class->value);
+
+        $history = Price::query()
+            ->whereIn('asset_id', $held->keys())
+            ->daily(now()->subDays(self::SPARKLINE_DAYS), now())
+            ->get(['id', 'asset_id', 'at', 'bid'])
+            ->groupBy('asset_id')
+            ->map(fn (EloquentCollection $prices) => $prices->map(fn (Price $price) => $price->bid)->all());
+
+        return [
+            'holdings' => collect(AssetClass::cases())
+                ->filter(fn (AssetClass $class) => $byClass->has($class->value))
+                ->mapWithKeys(fn (AssetClass $class) => [$class->value => $byClass[$class->value]]),
+            'history' => $history,
         ];
     }
 }
