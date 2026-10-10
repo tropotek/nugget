@@ -125,7 +125,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Users are deactivated, never deleted. An inactive user cannot sign in or reset a password, and is told nothing that an unknown email would not be.
 - A model that belongs to a user implements `App\Models\Contracts\Owned`. That gives it `App\Policies\OwnerPolicy` with no policy class of its own: the owner only, with no admin bypass. Authorise every read and write of one with `Gate::authorize`.
 - An admin-editable setting is read with `Settings::get('key')` (`App\Facades\Settings`). To add one, add it to `definitions()` in `App\Support\Settings` with its default, type and rules, and a field to `resources/views/settings/edit.blade.php`. An unknown key throws.
-- A financial year is named by the year it ends in: 2025 is 2024–25. Use `App\Support\FinancialYear` for its dates, which depend on the user's timezone.
+- A financial year is named by the year it ends in: 2025 is 2024–25. Use `App\Support\FinancialYear` for its dates, which depend on the user's timezone. The years in which a user has disposals come from `App\Ledger\ReportYears` (`forUser`, `open`): a year is open, and has a tax report, when it is the `first_report_year` setting or later.
 - `APP_ENV` is `local` in development, `testing` under PHPUnit and `production` when live. Check it with `app()->environment(…)`, never by reading `.env`.
 - `Database\Seeders\DatabaseSeeder` holds the development data. It only adds what is missing and does nothing in production. When a task adds a table, add realistic made-up rows for it there, owned by the seeded users.
 - Run Pint before committing.
