@@ -28,10 +28,10 @@
                                 <i class="ri-account-circle-line"></i>
                                 <span>Profile</span>
                             </a>
+                            <div class="dropdown-divider"></div>
                         @endif
 
                         @if (Route::has('logout'))
-                            <div class="dropdown-divider"></div>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="dropdown-item notify-item">

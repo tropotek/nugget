@@ -8,7 +8,9 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-Route::view('/', 'dashboard')->name('dashboard');
+Route::middleware('auth')->group(function () {
+    Route::view('/', 'dashboard')->name('dashboard');
+});
 
 // The container health check. No session or cookies: it must answer before the first migration.
 Route::get('/up', HealthController::class)
@@ -20,3 +22,5 @@ Route::get('/up', HealthController::class)
         ShareErrorsFromSession::class,
         PreventRequestForgery::class,
     ]);
+
+require __DIR__.'/auth.php';
