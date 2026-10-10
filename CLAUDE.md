@@ -15,7 +15,9 @@ There is no PHP with SQLite or Composer on the host. Everything runs in the dev 
 ```bash
 docker compose up -d                              # app, vite, scheduler, mailpit
 docker compose exec app composer install
-docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate                # apply new migrations; keeps the data
+docker compose exec app php artisan db:seed                # add any missing development data (local only)
+docker compose exec app composer fresh                     # wipe the database, migrate and seed
 docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
@@ -73,4 +75,6 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A model that belongs to a user implements `App\Models\Contracts\Owned`. That gives it `App\Policies\OwnerPolicy` with no policy class of its own: the owner only, with no admin bypass. Authorise every read and write of one with `Gate::authorize`.
 - An admin-editable setting is read with `Settings::get('key')` (`App\Facades\Settings`). To add one, add it to `definitions()` in `App\Support\Settings` with its default, type and rules, and a field to `resources/views/settings/edit.blade.php`. An unknown key throws.
 - A financial year is named by the year it ends in: 2025 is 2024–25.
+- `APP_ENV` is `local` in development, `testing` under PHPUnit and `production` when live. Check it with `app()->environment(…)`, never by reading `.env`.
+- `Database\Seeders\DatabaseSeeder` holds the development data. It only adds what is missing and does nothing in production. When a task adds a table, add realistic made-up rows for it there, owned by the seeded users.
 - Run Pint before committing.

@@ -18,4 +18,23 @@ return [
         'lockout_minutes' => (int) env('NUGGET_LOGIN_LOCKOUT_MINUTES', 15),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Development seed data
+    |--------------------------------------------------------------------------
+    |
+    | The admin that the database seeder creates, so a rebuilt development
+    | database always has the same account to sign in with. The seeder does
+    | nothing in production.
+    |
+    */
+
+    'dev' => [
+        'admin' => [
+            'name' => env('NUGGET_DEV_ADMIN_NAME', 'Admin'),
+            'email' => env('NUGGET_DEV_ADMIN_EMAIL', 'admin@example.com'),
+            'password' => env('NUGGET_DEV_ADMIN_PASSWORD', 'password'),
+        ],
+    ],
+
 ];
