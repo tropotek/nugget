@@ -63,7 +63,8 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `database/migrations/`: schema.
 - `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers, and the shipped image (the `prod` target). `docker-compose-live.yml` runs that image as the live site and its scheduler (project `nugget-live`), with `./data` beside it as the volume. `docker/Caddyfile` is Octane's FrankenPHP site config; `docker/entry.sh` is the shipped image's entrypoint (data directory, `APP_KEY`, migrate, cache) and `docker/artisan` its `artisan` command.
 - `resources/views/components/layouts/`: the page layouts. `app` is the signed-in shell (top bar, sidebar, page title, flash messages, footer) and `guest` the card used by the login pages; the rest are their parts.
-- `.github/workflows/release.yml`: the one workflow. A `v*` tag builds the `prod` target and publishes `ghcr.io/tropotek/nugget`. It runs no tests: `bin/release` runs them first. Keep it to that: no push or pull request triggers, standard runners only, so it costs nothing on the public repo.
+- `.github/workflows/docs.yml`: publishes the docs, only when `docs/` or `mkdocs.yml` changes on `main`. It builds with `mkdocs build --strict`, so a broken link between pages fails it.
+- `.github/workflows/release.yml`: the image. A `v*` tag builds the `prod` target and publishes `ghcr.io/tropotek/nugget`. It runs no tests: `bin/release` runs them first. Keep it to that: no push or pull request triggers, standard runners only, so it costs nothing on the public repo.
 - `/up` (`HealthController`, `App\Support\HealthStatus`): the health check the containers poll. 200 with the version when the database accepts a write, 503 otherwise.
 - `config/nugget.php`: Nugget's own settings.
 - `config/navigation.php`: the sidebar menu, read by `App\Support\Navigation`.
@@ -73,7 +74,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `app/Mcp/`: the MCP server and its tools.
 - `tests/Feature`, `tests/Unit`: PHPUnit tests.
 - `_notes/`: local planning docs, gitignored.
-- `docs/`: the user's docs. `tax-report.md` sets out the report's rules and limits: change it when the matcher or the calculator changes. `backup-restore.md` is the backup of `data/`.
+- `docs/`, `mkdocs.yml`: the documentation, built with MkDocs (Material) and published to https://tropotek.github.io/nugget/ by the `docs` workflow when a change to it reaches `main`. Documentation goes there, a page each, listed in `mkdocs.yml`'s `nav` and in both tables (`docs/index.md` and `README.md`). `README.md` stays short: what Nugget is, a quick start and the table. `tax-report.md` sets out the report's rules and limits: change it when the matcher or the calculator changes.
 - `version.md`: the app version.
 
 ## Conventions

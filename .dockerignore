@@ -7,6 +7,9 @@
 .cursor
 .claude
 _notes
+docs
+mkdocs.yml
+site
 data
 vendor
 node_modules
