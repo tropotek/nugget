@@ -6,14 +6,13 @@ Built on Laravel 13 and SQLite. A rewrite of [tkbtc](https://github.com/tropotek
 
 ## Install
 
-Requires Docker. There is no registry: the image is built from this repository.
+Requires Docker with the Compose plugin. Copy
+[`docker-compose-live.yml`](https://github.com/tropotek/nugget/blob/main/docker-compose-live.yml)
+into a directory of its own and start it:
 
 ```bash
-git clone <this repository> nugget-src && cd nugget-src
-docker build -t nugget .                      # the shipped image, about 2 minutes
-
-mkdir -p ~/Projects/Live/nugget && cp docker-compose-live.yml ~/Projects/Live/nugget/
-cd ~/Projects/Live/nugget
+mkdir nugget && cd nugget
+curl -fsSLO https://raw.githubusercontent.com/tropotek/nugget/main/docker-compose-live.yml
 docker compose -f docker-compose-live.yml up -d
 docker compose -f docker-compose-live.yml exec app artisan nugget:create-admin you@example.org
 ```
@@ -37,6 +36,7 @@ run `docker compose -f docker-compose-live.yml up -d` to recreate the containers
 
 | Setting | Default | What |
 |---|---|---|
+| `NUGGET_TAG` | `latest` | the version of the image to run, such as `1.0.0` |
 | `NUGGET_PORT` | `8080` | the host port the site is published on |
 | `APP_URL` | `http://localhost:8080` | the address people reach it at; used in emails |
 | `TRUSTED_PROXIES` | none | the reverse proxy in front whose forwarded headers are believed: its address, a comma list, or `*` |
@@ -74,7 +74,7 @@ A Caddy site for it is two lines:
 
 ```
 nugget.example.org {
-    reverse_proxy 192.168.0.7:8080
+    reverse_proxy nugget-host:8080
 }
 ```
 
@@ -110,11 +110,12 @@ after a renewal.
 Take a [backup](docs/backup-restore.md) first: a migration changes the database in place.
 
 ```bash
-cd nugget-src && git pull
-docker build -t nugget .
-cd ~/Projects/Live/nugget
-docker compose -f docker-compose-live.yml up -d --force-recreate
+docker compose -f docker-compose-live.yml pull
+docker compose -f docker-compose-live.yml up -d
 ```
+
+Versions are listed on the [package page](https://github.com/tropotek/nugget/pkgs/container/nugget).
+Set `NUGGET_TAG` to stay on one.
 
 The site runs any new migrations as it starts, and the scheduler waits for it. `curl
 http://localhost:8080/up` answers with the version once it is up.
@@ -142,6 +143,13 @@ docker compose exec app composer test                 # run the test suite
 - Mailpit (all outgoing mail): http://localhost:8779
 
 The ports are set in `.env`.
+
+## Releasing
+
+`bin/release v1.2.3` checks the code style and runs the tests, tags the commit and offers to push
+the tag. The tag starts the one GitHub workflow, which builds the image and publishes it to
+`ghcr.io/tropotek/nugget` as `1.2.3` and `latest`. The workflow runs no tests of its own. To build
+the image yourself instead: `docker build -t nugget .`, and set `NUGGET_IMAGE=nugget`.
 
 ## API and Claude (MCP)
 
@@ -184,3 +192,7 @@ Use your own address in place of `nugget.example.com` (in development, `http://l
 Claude then has six tools, one for each endpoint above: `holdings`, `parcels`, `transactions`, `tax_years`, `tax_report` and `issues`. Ask it something like "what is my net capital gain for 2024–25, and does any of it rest on estimated costs?".
 
 The tax report is a working paper, not tax advice. It takes in crypto only unless you choose other asset classes on the tax report page.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

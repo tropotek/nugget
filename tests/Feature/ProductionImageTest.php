@@ -93,6 +93,21 @@ class ProductionImageTest extends TestCase
         }
     }
 
+    public function test_a_version_tag_builds_the_prod_target_and_nothing_else_starts_the_workflow(): void
+    {
+        $workflow = file_get_contents(base_path('.github/workflows/release.yml'));
+
+        $this->assertStringContainsString('tags: ["v*"]', $workflow);
+        $this->assertStringContainsString('target: prod', $workflow);
+        $this->assertStringContainsString('build-args: APP_VERSION=', $workflow);
+        $this->assertStringNotContainsString('pull_request:', $workflow);
+        $this->assertStringNotContainsString('branches:', $workflow);
+
+        // The live compose file runs the image the workflow publishes.
+        $this->assertStringContainsString('ghcr.io/tropotek/nugget', file_get_contents(base_path('docker-compose-live.yml')));
+        $this->assertTrue(is_executable(base_path('bin/release')));
+    }
+
     public function test_the_image_logs_to_the_data_directory(): void
     {
         $this->assertSame(base_path('data/logs/nugget.log'), config('logging.channels.data.path'));

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Tag a release after the test suite passes locally. Pushing the tag starts the GHCR build
+# (.github/workflows/release.yml), which runs no tests of its own.
+#
+#   bin/release v1.2.3
+set -euo pipefail
+
+version="${1:-}"
+if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+    echo "Usage: bin/release vMAJOR.MINOR.PATCH[-pre]" >&2
+    exit 1
+fi
+
+cd "$(dirname "$0")/.."
+
+if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
+    echo "Release from main." >&2
+    exit 1
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Commit or stash your changes first." >&2
+    exit 1
+fi
+if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+    echo "Tag $version already exists." >&2
+    exit 1
+fi
+if [[ -n "$(git log origin/main..HEAD --oneline 2>/dev/null)" ]]; then
+    echo "main has commits that are not on origin. Push them first: the image is built from what GitHub has." >&2
+    exit 1
+fi
+
+echo "==> Code style"
+docker compose exec -T app vendor/bin/pint --test
+
+echo "==> Tests"
+docker compose exec -T app composer test
+
+git tag -a "$version" -m "Release $version"
+echo "Tagged $version."
+
+read -r -p "Push $version to origin now (starts the image build)? [y/N] " answer
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+    git push origin "$version"
+else
+    echo "Push later with: git push origin $version"
+fi

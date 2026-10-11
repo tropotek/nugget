@@ -1,8 +1,8 @@
 # Nugget — the live compose file: the site and its scheduler, two containers of the one shipped image.
 #
-#   docker build -t nugget .                               build the image, in the repo (there is no registry)
 #   docker compose -f docker-compose-live.yml up -d        start (migrations run automatically)
-#   docker compose -f docker-compose-live.yml up -d --force-recreate   upgrade, after building a newer image
+#   docker compose -f docker-compose-live.yml pull && \
+#   docker compose -f docker-compose-live.yml up -d        upgrade to a newer image
 #   docker compose -f docker-compose-live.yml logs app     the logs (also in data/logs/, which survives upgrades)
 #   docker compose -f docker-compose-live.yml exec app artisan <command>   run artisan (always as the app user)
 #
@@ -11,6 +11,7 @@
 #   docker compose -f docker-compose-live.yml exec app artisan nugget:import-tkbtc
 #
 # Put settings in a .env file next to this one (optional), e.g.:
+#   NUGGET_TAG=1.0.0             # a version to stay on; latest unless set
 #   NUGGET_PORT=8080
 #   APP_URL=https://nugget.example.org
 #   SESSION_SECURE_COOKIE=true   # when the site is served over https, either way below
@@ -32,7 +33,8 @@
 name: nugget-live  # distinct from the dev stack (docker-compose.yml) on the same machine
 
 x-nugget: &nugget
-  image: ${NUGGET_IMAGE:-nugget}:${NUGGET_TAG:-latest}
+  # Built from the repo instead: `docker build -t nugget .`, then NUGGET_IMAGE=nugget.
+  image: ${NUGGET_IMAGE:-ghcr.io/tropotek/nugget}:${NUGGET_TAG:-latest}
   restart: unless-stopped
   env_file:
     - path: .env
