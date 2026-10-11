@@ -97,15 +97,33 @@ class TaxReportPageTest extends TestCase
         $this->get('/tax-report')->assertRedirect(route('tax-report.show', 2026));
     }
 
-    public function test_with_nothing_sold_in_an_open_year_it_says_so(): void
+    public function test_with_nothing_sold_in_an_open_year_it_opens_on_the_year_in_progress(): void
     {
         $this->add($this->bitcoin, '2023-01-10', Transaction::factory()->buy('2', '1000'));
         $this->add($this->bitcoin, '2024-03-04', Transaction::factory()->sell('1', '1200'));
 
-        $this->get('/tax-report')
+        $this->get('/tax-report')->assertRedirect(route('tax-report.show', 2026));
+
+        $this->get('/tax-report/2026')
             ->assertOk()
-            ->assertSee('Nothing to report yet: nothing has been sold in 2024–25 or since.')
-            ->assertSee('2023–24 has sales, but is closed');
+            ->assertSee('Nothing was sold in this section in 2025–26.')
+            ->assertSeeInOrder(['Net capital gain', '$0.00'])
+            ->assertSee('2023–24 is closed and has no report.');
+    }
+
+    public function test_the_picker_offers_every_open_year_sold_in_or_not(): void
+    {
+        // Sold in 2024–25 only; the year in progress is 2025–26.
+        $this->ledger();
+
+        $this->get('/tax-report')->assertRedirect(route('tax-report.show', 2025));
+
+        $this->get('/tax-report/2025')
+            ->assertSeeInOrder(['aria-label="Financial year"', '2025–26', '2024–25'], false)
+            ->assertSee('href="'.route('tax-report.show', 2026).'" class="btn btn-light"', false)
+            ->assertSee('title="Nothing was sold"', false)
+            ->assertSee('title="4 disposals"', false)
+            ->assertDontSee(route('tax-report.show', 2024));
     }
 
     public function test_the_year_picker_offers_the_open_years_only(): void
@@ -116,8 +134,8 @@ class TaxReportPageTest extends TestCase
         $this->get('/tax-report/2025')
             ->assertOk()
             ->assertSee('<h4 class="page-title">Tax report 2024–25</h4>', false)
-            ->assertSee('href="'.route('tax-report.show', 2026).'" class="btn btn-light">2025–26', false)
-            ->assertSee('href="'.route('tax-report.show', 2025).'" class="btn btn-primary">2024–25', false)
+            ->assertSee('href="'.route('tax-report.show', 2026).'" class="btn btn-light"', false)
+            ->assertSee('href="'.route('tax-report.show', 2025).'" class="btn btn-primary"', false)
             ->assertDontSee(route('tax-report.show', 2024))
             ->assertSee('2023–24 is closed and has no report.');
     }

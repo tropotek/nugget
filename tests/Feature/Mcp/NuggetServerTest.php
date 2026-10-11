@@ -261,7 +261,7 @@ class NuggetServerTest extends TestCase
         $this->tool(TaxYearsTool::class)
             ->assertHasNoErrors()
             ->assertStructuredContent($this->endpoint('tax/years'))
-            ->assertStructuredContent(fn (AssertableJson $json) => $json->where('years.0.year', 2025)->where('years.0.open', true)->etc());
+            ->assertStructuredContent(fn (AssertableJson $json) => $json->where('years.0.year', 2026)->where('years.0.disposals', 0)->where('years.1.year', 2025)->where('years.1.open', true)->etc());
     }
 
     public function test_tax_report_returns_what_its_endpoint_does(): void

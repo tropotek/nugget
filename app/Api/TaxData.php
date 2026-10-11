@@ -25,9 +25,9 @@ class TaxData
     ) {}
 
     /**
-     * The financial years in which the user sold something, the latest
-     * first. A year is named by the year it ends in: 2025 is 2024–25. Only
-     * an open year has a report.
+     * The financial years, the latest first: every open one, sold in or
+     * not, and the closed ones in which something was sold. A year is named
+     * by the year it ends in: 2025 is 2024–25. Only an open year has a report.
      *
      * @return array<string, mixed>
      */
@@ -35,7 +35,7 @@ class TaxData
     {
         return [
             'first_report_year' => (int) Settings::get('first_report_year'),
-            'years' => $this->years->forUser($user)->map(fn (ReportYear $year) => [
+            'years' => $this->years->all($user)->map(fn (ReportYear $year) => [
                 ...$this->year($year->year, $user),
                 'open' => $year->open,
                 'disposals' => $year->disposals,

@@ -123,15 +123,46 @@ class ReportYearsTest extends TestCase
         $this->assertSame(['2024–25 1 closed', '2023–24 1 closed'], $this->years());
     }
 
-    public function test_the_open_years_are_the_ones_a_report_is_offered_for(): void
+    public function test_every_year_from_the_first_report_year_to_the_one_in_progress_is_open_sold_in_or_not(): void
     {
+        $this->travelTo('2026-10-11 02:00:00');
         $this->sell('2024-03-04 02:00:00');
         $this->sell('2024-12-24 02:00:00');
-        $this->sell('2026-08-15 02:00:00');
 
         $open = app(ReportYears::class)->open($this->user);
 
-        $this->assertSame([2027, 2025], $open->map(fn (ReportYear $year) => $year->year->year)->all());
+        // 2026–27 is in progress. Nothing was sold in it or in 2025–26; the sale of March 2024 is in a closed year.
+        $this->assertSame(
+            ['2026–27 0', '2025–26 0', '2024–25 1'],
+            $open->map(fn (ReportYear $year) => "{$year->year->label()} {$year->disposals}")->all(),
+        );
+        $this->assertTrue($open->every(fn (ReportYear $year) => $year->open));
+    }
+
+    public function test_the_year_in_progress_is_by_the_users_own_calendar(): void
+    {
+        // 15:00 UTC on 30 June 2026: 1 July in Melbourne, still 30 June in Perth.
+        $this->travelTo('2026-06-30 15:00:00');
+
+        $this->assertSame(2027, app(ReportYears::class)->open($this->user)->first()->year->year);
+
+        $this->user->update(['timezone' => 'Australia/Perth']);
+
+        $this->assertSame(2026, app(ReportYears::class)->open($this->user)->first()->year->year);
+    }
+
+    public function test_every_year_worth_listing_is_the_open_ones_and_the_closed_ones_sold_in(): void
+    {
+        $this->travelTo('2025-08-01 02:00:00');
+        $this->sell('2022-08-15 02:00:00');
+        $this->sell('2024-12-24 02:00:00');
+
+        // 2023–24 is closed and nothing was sold in it: it is not listed.
+        $this->assertSame(
+            ['2025–26 0 open', '2024–25 1 open', '2022–23 1 closed'],
+            app(ReportYears::class)->all($this->user)
+                ->map(fn (ReportYear $year) => "{$year->year->label()} {$year->disposals} ".($year->open ? 'open' : 'closed'))->all(),
+        );
     }
 
     public function test_another_users_disposals_are_left_out(): void

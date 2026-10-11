@@ -28,18 +28,18 @@ class TaxReportController extends Controller
     public function __construct(private readonly ReportYears $years) {}
 
     /**
-     * The latest open year that has disposals, or a page that says there is nothing to report.
+     * The latest open year in which something was sold, or the year in
+     * progress when nothing has been.
      */
-    public function index(Request $request): RedirectResponse|View
+    public function index(Request $request): RedirectResponse
     {
-        $latest = $this->years->open($request->user())->first();
+        $open = $this->years->open($request->user());
+        $latest = $open->first(fn (ReportYear $year) => $year->disposals > 0) ?? $open->first();
 
         // A message sent here, such as that a year is closed, goes on to the year this opens.
         $request->session()->reflash();
 
-        return $latest
-            ? redirect()->route('tax-report.show', $latest->year->year)
-            : view('tax-report.empty', ['closed' => $this->closed($request)]);
+        return redirect()->route('tax-report.show', $latest->year->year);
     }
 
     public function show(Request $request, int $year, CgtCalculator $calculator): RedirectResponse|View

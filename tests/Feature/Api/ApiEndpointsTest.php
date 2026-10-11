@@ -265,7 +265,7 @@ class ApiEndpointsTest extends TestCase
 
     // Tax
 
-    public function test_tax_years_lists_the_years_with_disposals_open_or_closed(): void
+    public function test_tax_years_lists_every_open_year_and_the_closed_ones_with_disposals(): void
     {
         $this->add($this->bitcoin, '2024-03-04', Transaction::factory()->buy('1', '900'));
         $this->add($this->found, '2024-03-10', Transaction::factory()->found('1'));
@@ -276,6 +276,8 @@ class ApiEndpointsTest extends TestCase
             ->assertExactJson(['data' => [
                 'first_report_year' => 2025,
                 'years' => [
+                    // In progress, and nothing sold in it yet.
+                    ['year' => 2026, 'label' => '2025–26', 'starts_at' => '2025-07-01T00:00:00+10:00', 'ends_before' => '2026-07-01T00:00:00+10:00', 'open' => true, 'disposals' => 0],
                     ['year' => 2025, 'label' => '2024–25', 'starts_at' => '2024-07-01T00:00:00+10:00', 'ends_before' => '2025-07-01T00:00:00+10:00', 'open' => true, 'disposals' => 2],
                     ['year' => 2024, 'label' => '2023–24', 'starts_at' => '2023-07-01T00:00:00+10:00', 'ends_before' => '2024-07-01T00:00:00+10:00', 'open' => false, 'disposals' => 1],
                 ],

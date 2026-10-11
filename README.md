@@ -47,7 +47,7 @@ curl -H "Authorization: Bearer YOUR-TOKEN" -H "Accept: application/json" https:/
 | `/api/v1/holdings` | each asset held, with units, cost base, price, value and unrealised gain, and the portfolio totals |
 | `/api/v1/assets/{id}/parcels` | an asset's open parcels |
 | `/api/v1/transactions` | the ledger, paged. Filters: `asset`, `type`, `source`, `from`, `to`, `estimated`; paging: `page`, `per_page` |
-| `/api/v1/tax/years` | the financial years with disposals, open or closed |
+| `/api/v1/tax/years` | the financial years: every open one, and the closed ones with disposals |
 | `/api/v1/tax/{year}` | a year's capital gains report. The year is the one it ends in: `2025` is 2024–25 |
 | `/api/v1/issues` | balance mismatches, and open parcels with no cost base |
 

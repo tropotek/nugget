@@ -1,6 +1,6 @@
 {{--
     The capital gains report for one financial year.
-    $report: the App\Tax\CgtReport. $years: the open App\Ledger\ReportYears, for the picker.
+    $report: the App\Tax\CgtReport. $years: every open App\Ledger\ReportYear, for the picker, sold in or not.
     $closed: the labels of the closed years with sales. $broughtForward: what the year before leaves
     to carry forward, or null when that year is closed.
 --}}
@@ -17,7 +17,8 @@
         <a href="{{ route('tax-report.csv', $year->year) }}" class="btn btn-light"><i class="ri-file-excel-2-line me-1"></i>CSV</a>
         <div class="btn-group" role="group" aria-label="Financial year">
             @foreach ($years as $choice)
-                <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['btn', 'btn-primary' => $choice->year->year === $year->year, 'btn-light' => $choice->year->year !== $year->year])>{{ $choice->year->label() }}</a>
+                <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['btn', 'btn-primary' => $choice->year->year === $year->year, 'btn-light' => $choice->year->year !== $year->year])
+                    title="{{ $choice->disposals === 0 ? 'Nothing was sold' : $choice->disposals.' '.($choice->disposals === 1 ? 'disposal' : 'disposals') }}">{{ $choice->year->label() }}</a>
             @endforeach
         </div>
     </x-slot:actions>

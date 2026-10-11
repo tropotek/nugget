@@ -11,8 +11,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * The financial years in which a user has disposals. A disposal falls in the
- * year of its sale, by the user's calendar.
+ * The financial years of a user's tax reports. A disposal falls in the year of
+ * its sale, by the user's calendar.
  *
  * Like Holdings, it does no authorising.
  */
@@ -40,12 +40,37 @@ class ReportYears
     }
 
     /**
-     * The years a report is offered for, the latest first.
+     * The years a report is offered for, the latest first: every year from
+     * the first report year to the one in progress, whether or not anything
+     * was sold in it. A year with nothing sold has a report of zeros.
      *
      * @return Collection<int, ReportYear>
      */
     public function open(User $user): Collection
     {
-        return $this->forUser($user)->filter(fn (ReportYear $year) => $year->open)->values();
+        $first = (int) Settings::get('first_report_year');
+        $current = FinancialYear::containing(now(), $user->timezone)->year;
+        $sold = $this->forUser($user)->keyBy(fn (ReportYear $year) => $year->year->year);
+
+        // A sale dated ahead of today is still offered.
+        $last = max($current, (int) $sold->keys()->max());
+
+        return collect($last >= $first ? range($last, $first) : [])
+            ->map(fn (int $year) => $sold->get($year) ?? new ReportYear(new FinancialYear($year), 0, true))
+            ->values();
+    }
+
+    /**
+     * Every year worth listing, the latest first: the open ones, and the
+     * closed ones in which something was sold.
+     *
+     * @return Collection<int, ReportYear>
+     */
+    public function all(User $user): Collection
+    {
+        return $this->open($user)
+            ->concat($this->forUser($user)->reject(fn (ReportYear $year) => $year->open))
+            ->sortByDesc(fn (ReportYear $year) => $year->year->year)
+            ->values();
     }
 }
