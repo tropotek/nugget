@@ -31,10 +31,11 @@ if [[ -n "$(git log origin/main..HEAD --oneline 2>/dev/null)" ]]; then
 fi
 
 echo "==> Code style"
-docker compose exec -T app vendor/bin/pint --test
+# Without </dev/null, docker reads the terminal's input and takes the answer to the question below.
+docker compose exec -T app vendor/bin/pint --test </dev/null
 
 echo "==> Tests"
-docker compose exec -T app composer test
+docker compose exec -T app composer test </dev/null
 
 git tag -a "$version" -m "Release $version"
 echo "Tagged $version."
