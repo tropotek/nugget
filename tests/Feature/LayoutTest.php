@@ -68,4 +68,18 @@ class LayoutTest extends TestCase
             ->assertDontSee('left-side-menu', false)
             ->assertDontSee('navbar-custom', false);
     }
+
+    public function test_every_page_names_the_favicon_in_the_forms_browsers_ask_for(): void
+    {
+        $this->get('/login')
+            ->assertSee('<link rel="icon" href="/favicon.ico" sizes="32x32">', false)
+            ->assertSee('<link rel="icon" type="image/svg+xml" href="/favicon.svg">', false)
+            ->assertSee('<link rel="apple-touch-icon" href="/apple-touch-icon.png">', false);
+
+        // The mark is seven facets, and the same in each file.
+        $this->assertSame(7, substr_count(file_get_contents(public_path('favicon.svg')), '<polygon'));
+        // An .ico starts with its header: reserved 0, type 1 (an icon). It was once an empty file.
+        $this->assertSame([0, 1], array_values(unpack('v2', file_get_contents(public_path('favicon.ico')))));
+        $this->assertSame([180, 180], array_slice(getimagesize(public_path('apple-touch-icon.png')), 0, 2));
+    }
 }
