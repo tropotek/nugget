@@ -1,0 +1,66 @@
+# Nugget — the live compose file: the site and its scheduler, two containers of the one shipped image.
+#
+#   docker build -t nugget .                               build the image, in the repo (there is no registry)
+#   docker compose -f docker-compose-live.yml up -d        start (migrations run automatically)
+#   docker compose -f docker-compose-live.yml up -d --force-recreate   upgrade, after building a newer image
+#   docker compose -f docker-compose-live.yml logs app     the logs (also in data/logs/, which survives upgrades)
+#   docker compose -f docker-compose-live.yml exec app artisan <command>   run artisan (always as the app user)
+#
+# A new site has no users. Make the first admin, or bring the tkbtc site over:
+#   docker compose -f docker-compose-live.yml exec app artisan nugget:create-admin you@example.org
+#   docker compose -f docker-compose-live.yml exec app artisan nugget:import-tkbtc
+#
+# Put settings in a .env file next to this one (optional), e.g.:
+#   NUGGET_PORT=8080
+#   APP_URL=https://nugget.example.org
+#   SESSION_SECURE_COOKIE=true   # when the site is served over https
+#   MAIL_MAILER=smtp  MAIL_HOST=…  MAIL_PORT=587  MAIL_USERNAME=…  MAIL_PASSWORD=…  MAIL_FROM_ADDRESS=nugget@example.org
+#   TKBTC_DB_HOST=…  TKBTC_DB_PORT=…  TKBTC_DB_DATABASE=…  TKBTC_DB_USERNAME=…  TKBTC_DB_PASSWORD=…   # for the import
+#
+# data/private/.app-key decrypts every exchange's API key and secret: back it up with the database
+# and never lose it.
+
+name: nugget-live  # distinct from the dev stack (docker-compose.yml) on the same machine
+
+x-nugget: &nugget
+  image: ${NUGGET_IMAGE:-nugget}:${NUGGET_TAG:-latest}
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    # Everything that must survive an upgrade, in one directory:
+    #   data/nugget.sqlite        the database (and its WAL files)
+    #   data/private/.app-key     generated APP_KEY (unless APP_KEY is set in .env)
+    #   data/logs/                daily logs, kept 30 days
+    - ./data:/app/data
+
+services:
+  app:
+    <<: *nugget
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:8080}
+    ports:
+      # Host port → the container's FrankenPHP/Octane on 8080 (plain HTTP; put TLS in a reverse proxy).
+      - "${NUGGET_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  # Runs the schedule: prices and exchange syncs every 5 minutes, pruning nightly.
+  scheduler:
+    <<: *nugget
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      # The site migrates and makes the key; the scheduler waits for it and reads both.
+      NUGGET_MIGRATE: "0"
+    command: ["php", "artisan", "schedule:work"]
+    # No HTTP server here, so the image's own check on /up would always fail.
+    healthcheck:
+      disable: true

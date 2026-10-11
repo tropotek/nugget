@@ -47,6 +47,25 @@ class ProductionImageTest extends TestCase
         }
     }
 
+    public function test_the_live_compose_file_runs_the_site_and_its_scheduler_from_one_data_directory(): void
+    {
+        $compose = file_get_contents(base_path('docker-compose-live.yml'));
+
+        // Its own project name, so it can run beside the dev stack.
+        $this->assertMatchesRegularExpression('/^name: nugget-live\b/m', $compose);
+        $this->assertMatchesRegularExpression('/^  app:$/m', $compose);
+        $this->assertMatchesRegularExpression('/^  scheduler:$/m', $compose);
+        $this->assertStringContainsString('- ./data:/app/data', $compose);
+        $this->assertStringContainsString('http://127.0.0.1:8080/up', $compose);
+
+        // Only the site migrates; the scheduler waits for it.
+        $scheduler = substr($compose, strpos($compose, "\n  scheduler:"));
+        $this->assertStringContainsString('condition: service_healthy', $scheduler);
+        $this->assertStringContainsString('NUGGET_MIGRATE: "0"', $scheduler);
+        $this->assertStringContainsString('"schedule:work"', $scheduler);
+        $this->assertStringContainsString('disable: true', $scheduler);
+    }
+
     public function test_the_image_logs_to_the_data_directory(): void
     {
         $this->assertSame(base_path('data/logs/nugget.log'), config('logging.channels.data.path'));

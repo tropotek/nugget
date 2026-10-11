@@ -30,6 +30,7 @@ docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
 docker build -t nugget .                          # the shipped image (the Dockerfile's prod target, its default)
+docker compose -f docker-compose-live.yml up -d   # the live site and its scheduler, from that image (port NUGGET_PORT, 8080)
 ```
 
 | Service | Where | What |
@@ -58,7 +59,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `tests/Fixtures/`: recorded API responses. `tests/Fakes/`: stand-ins for outside services.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
-- `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers, and the shipped image (the `prod` target). `docker/Caddyfile` is Octane's FrankenPHP site config; `docker/entry.sh` is the shipped image's entrypoint (data directory, `APP_KEY`, migrate, cache) and `docker/artisan` its `artisan` command.
+- `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers, and the shipped image (the `prod` target). `docker-compose-live.yml` runs that image as the live site and its scheduler (project `nugget-live`), with `./data` beside it as the volume. `docker/Caddyfile` is Octane's FrankenPHP site config; `docker/entry.sh` is the shipped image's entrypoint (data directory, `APP_KEY`, migrate, cache) and `docker/artisan` its `artisan` command.
 - `resources/views/components/layouts/`: the page layouts. `app` is the signed-in shell (top bar, sidebar, page title, flash messages, footer) and `guest` the card used by the login pages; the rest are their parts.
 - `/up` (`HealthController`, `App\Support\HealthStatus`): the health check the containers poll. 200 with the version when the database accepts a write, 503 otherwise.
 - `config/nugget.php`: Nugget's own settings.
