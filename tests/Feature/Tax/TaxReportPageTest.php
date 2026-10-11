@@ -119,10 +119,10 @@ class TaxReportPageTest extends TestCase
         $this->get('/tax-report')->assertRedirect(route('tax-report.show', 2025));
 
         $this->get('/tax-report/2025')
-            ->assertSeeInOrder(['aria-label="Financial year"', '2025–26', '2024–25'], false)
-            ->assertSee('href="'.route('tax-report.show', 2026).'" class="btn btn-light"', false)
-            ->assertSee('title="Nothing was sold"', false)
-            ->assertSee('title="4 disposals"', false)
+            // A dropdown headed by the year shown, each year saying what was sold in it.
+            ->assertSeeInOrder(['id="year-picker"', 'aria-label="Financial year"', '2024–25', 'dropdown-menu', '2025–26', 'nothing sold', '2024–25', '4 disposals'], false)
+            ->assertSee('href="'.route('tax-report.show', 2026).'" class="dropdown-item d-flex justify-content-between gap-3"', false)
+            ->assertSee('href="'.route('tax-report.show', 2025).'" class="dropdown-item d-flex justify-content-between gap-3 active"', false)
             ->assertDontSee(route('tax-report.show', 2024));
     }
 
@@ -134,8 +134,8 @@ class TaxReportPageTest extends TestCase
         $this->get('/tax-report/2025')
             ->assertOk()
             ->assertSee('<h4 class="page-title">Tax report 2024–25</h4>', false)
-            ->assertSee('href="'.route('tax-report.show', 2026).'" class="btn btn-light"', false)
-            ->assertSee('href="'.route('tax-report.show', 2025).'" class="btn btn-primary"', false)
+            ->assertSee('href="'.route('tax-report.show', 2026).'" class="dropdown-item d-flex justify-content-between gap-3"', false)
+            ->assertSee('href="'.route('tax-report.show', 2025).'" class="dropdown-item d-flex justify-content-between gap-3 active"', false)
             ->assertDontSee(route('tax-report.show', 2024))
             ->assertSee('2023–24 is closed and has no report.');
     }

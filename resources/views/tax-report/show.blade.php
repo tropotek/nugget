@@ -15,11 +15,22 @@
     <x-slot:actions>
         <a href="{{ route('tax-report.pdf', $year->year) }}" class="btn btn-light"><i class="ri-file-pdf-line me-1"></i>PDF</a>
         <a href="{{ route('tax-report.csv', $year->year) }}" class="btn btn-light"><i class="ri-file-excel-2-line me-1"></i>CSV</a>
-        <div class="btn-group" role="group" aria-label="Financial year">
-            @foreach ($years as $choice)
-                <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['btn', 'btn-primary' => $choice->year->year === $year->year, 'btn-light' => $choice->year->year !== $year->year])
-                    title="{{ $choice->disposals === 0 ? 'Nothing was sold' : $choice->disposals.' '.($choice->disposals === 1 ? 'disposal' : 'disposals') }}">{{ $choice->year->label() }}</a>
-            @endforeach
+        {{-- A dropdown, so the list of years can grow without crowding the heading. --}}
+        <div class="dropdown d-inline-block" id="year-picker">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Financial year">
+                {{ $year->label() }} <i class="mdi mdi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                @foreach ($years as $choice)
+                    <li>
+                        <a href="{{ route('tax-report.show', $choice->year->year) }}" @class(['dropdown-item', 'd-flex', 'justify-content-between', 'gap-3', 'active' => $choice->year->year === $year->year])
+                            @if ($choice->year->year === $year->year) aria-current="true" @endif>
+                            <span>{{ $choice->year->label() }}</span>
+                            <small @class(['text-muted' => $choice->year->year !== $year->year])>{{ $choice->disposals === 0 ? 'nothing sold' : $choice->disposals.' '.($choice->disposals === 1 ? 'disposal' : 'disposals') }}</small>
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
         </div>
     </x-slot:actions>
 
