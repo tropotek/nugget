@@ -8,6 +8,7 @@ use App\Import\Importer;
 use App\Import\Passes\AssetLogPass;
 use App\Import\TkbtcSource;
 use App\Ledger\Holdings;
+use App\Ledger\ParcelMatcher;
 use App\Models\Asset;
 use App\Models\Exchange;
 use App\Models\Transaction;
@@ -169,12 +170,14 @@ class AssetLogPassTest extends TestCase
         $this->assertSame(['found 3 @ 0 0.00', 'sell 1 @ 5000 5000.00'], $this->ledger($this->gold));
 
         $found = $this->gold->transactions()->oldest('occurred_at')->first();
-        $this->assertTrue($found->estimated);
-        $this->assertStringContainsString('Put the real cost on this.', $found->notes);
+        // Found at no cost is a fact, not a guess. The sale's price is a guess.
+        $this->assertFalse($found->estimated);
+        $this->assertStringContainsString('Put a cost on this if it was bought.', $found->notes);
+        $this->assertTrue($this->gold->transactions()->where('type', 'sell')->sole()->estimated);
 
         $holding = app(Holdings::class)->forAsset($this->gold);
         $this->assertSame(['2', '0.00'], [(string) $holding->units, $holding->costBase->toFixed(2)]);
-        $this->assertTrue($holding->estimated);
+        $this->assertFalse($holding->estimated);
     }
 
     public function test_a_change_with_no_tick_to_cost_it_is_imported_at_nothing_and_warned_about(): void
@@ -262,6 +265,27 @@ class AssetLogPassTest extends TestCase
         $this->assertModelExists($mine);
         $this->assertSame(['buy 1 @ 90000 90000.00', 'buy 0.5 @ 100000 50000.00'], $this->ledger($this->bitcoin));
         $this->assertSame('1.5', (string) app(Holdings::class)->forAsset($this->bitcoin)->units);
+    }
+
+    public function test_an_asset_with_its_real_history_from_the_exchange_gets_no_estimates(): void
+    {
+        $this->tick(1, '2024-08-01 02:00:00', '99000', '100000');
+        $this->change(12, '2024-08-01 02:00:00', '0.5');
+        $this->change(20, '2025-07-05 22:02:09', '3');
+        // A backfill has replaced the guesses about the bitcoin with what the exchange says happened.
+        Transaction::factory()->for($this->bitcoin)->buy('0.5', '98765', '10')->fromExchange('csv-900000003')->create(['occurred_at' => '2024-08-01 01:58:00']);
+        app(ParcelMatcher::class)->rematch($this->bitcoin);
+
+        $context = $this->import();
+        $this->import(fresh: true);
+
+        $this->assertSame(['buy 0.5 @ 98765 49392.50'], $this->ledger($this->bitcoin));
+        // The gold, which no exchange knows of, still comes from the log.
+        $this->assertSame(['found 3 @ 0 0.00'], $this->ledger($this->gold));
+        $this->assertContains('Bitcoin has its real history from the exchange, so its balance log was not brought over.', $context->notes);
+        // And the units are still checked against tkbtc's.
+        $this->assertContains('Units held agree with tkbtc for 2 of 2 assets.', $context->notes);
+        $this->assertSame([], $context->warnings);
     }
 
     public function test_the_count_is_the_rows_of_the_log(): void

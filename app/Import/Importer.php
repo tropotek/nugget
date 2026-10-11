@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
  * A run is all or nothing: every pass is inside one database transaction, so
  * one that fails part-way leaves nothing half imported. A dry run only
  * counts.
+ *
+ * Outside production, a run first drops the seeded development data, so the
+ * real account is not left beside a demo one.
  */
 class Importer
 {
@@ -26,6 +29,11 @@ class Importer
      * @param  list<Pass>|null  $passes  the passes to run, in place of PASSES
      */
     public function __construct(private readonly ?array $passes = null) {}
+
+    private function seeded(): SeededData
+    {
+        return app(SeededData::class);
+    }
 
     /**
      * @return list<Pass>
@@ -48,6 +56,11 @@ class Importer
         }
 
         return DB::transaction(function () use ($context, $fresh) {
+            // Real data is not left beside the made-up development data.
+            if (($dropped = $this->seeded()->drop()) > 0) {
+                $context->note("Dropped the seeded development data: {$dropped} made-up ".($dropped === 1 ? 'user' : 'users').' and all they owned.');
+            }
+
             if ($fresh) {
                 foreach (array_reverse($this->passes()) as $pass) {
                     $pass->clear($context);

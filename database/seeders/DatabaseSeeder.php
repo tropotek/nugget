@@ -29,6 +29,17 @@ use Illuminate\Support\Str;
  */
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * The emails of the users this makes. An import of real data drops them
+     * and all they own (App\Import\SeededData).
+     *
+     * @return list<string>
+     */
+    public static function emails(): array
+    {
+        return [Str::lower((string) config('nugget.dev.admin.email')), 'member@example.com', 'inactive@example.com'];
+    }
+
     public function run(): void
     {
         if (! app()->environment('local', 'testing')) {

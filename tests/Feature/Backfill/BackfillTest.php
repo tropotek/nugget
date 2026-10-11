@@ -154,6 +154,8 @@ class BackfillTest extends TestCase
         $this->assertSame(['ALGO', 'ETHW', 'XRP'], $result->assetsCreated);
 
         $ripple = $this->asset('XRP');
+        // Named where the coin is known, by its symbol where it is not.
+        $this->assertSame(['Algorand', 'EthereumPoW'], [$this->asset('ALGO')->name, $this->asset('ETHW')->name]);
         $this->assertSame([$this->user->id, 'XRP', 'XRP', 'crypto', 'XRP-AUD', false], [
             $ripple->user_id, $ripple->name, $ripple->unit, $ripple->class->value, $ripple->market_id, $ripple->archived,
         ]);
@@ -319,6 +321,21 @@ class BackfillTest extends TestCase
         $this->assertSame(['buy 1 @ 100 0.00 100.00', 'sell 1 @ 150 0.00 150.00'], $this->ledger($this->asset('LTC')));
         // Nothing of the other assets is touched: the report does not mention them.
         $this->assertSame(0, $result->estimatesRemoved);
+    }
+
+    public function test_a_coin_nugget_has_no_name_for_is_named_by_its_symbol(): void
+    {
+        $stream = fopen('php://memory', 'w+');
+        fwrite($stream, implode("\n", [
+            'transactionId, creationTime, recordType, action, currency, amount, description, balance, referenceId',
+            '1,2024-07-02T01:00:00Z,Fund Transfer,Deposit,ZZZ,5,ZZZ Deposit,5,R1',
+            '2,2024-07-02T02:00:00Z,Fund Transfer,Deposit,LTC,1,LTC Deposit,1,R2',
+        ])."\n");
+        rewind($stream);
+
+        app(Backfill::class)->run($this->exchange, BtcMarketsCsv::read($stream));
+
+        $this->assertSame(['Litecoin', 'ZZZ'], [$this->asset('LTC')->name, $this->asset('ZZZ')->name]);
     }
 
     public function test_a_dry_run_reports_the_same_and_changes_nothing(): void

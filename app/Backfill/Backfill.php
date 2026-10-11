@@ -40,6 +40,16 @@ class Backfill
     /** How far the ledger and the report's final balance may differ: rounding to eight places. */
     private const TOLERANCE = '0.000001';
 
+    /** What a coin is called, for an asset the backfill has to make. One not here is named by its symbol. */
+    public const COIN_NAMES = [
+        'AAVE' => 'Aave', 'ADA' => 'Cardano', 'ALGO' => 'Algorand', 'AVAX' => 'Avalanche', 'BAT' => 'Basic Attention Token',
+        'BCH' => 'Bitcoin Cash', 'BSV' => 'Bitcoin SV', 'BTC' => 'Bitcoin', 'COMP' => 'Compound', 'DOGE' => 'Dogecoin',
+        'DOT' => 'Polkadot', 'ENJ' => 'Enjin Coin', 'ETC' => 'Ethereum Classic', 'ETH' => 'Ethereum', 'ETHW' => 'EthereumPoW',
+        'GNT' => 'Golem', 'LINK' => 'Chainlink', 'LTC' => 'Litecoin', 'MANA' => 'Decentraland', 'MCAU' => 'Meld Gold',
+        'OMG' => 'OMG Network', 'POWR' => 'Powerledger', 'SAND' => 'The Sandbox', 'SOL' => 'Solana', 'UNI' => 'Uniswap',
+        'USDC' => 'USD Coin', 'USDT' => 'Tether', 'XLM' => 'Stellar', 'XRP' => 'XRP',
+    ];
+
     /** @var array<string, Asset> by coin */
     private array $assets = [];
 
@@ -150,7 +160,7 @@ class Backfill
 
             if (! $asset) {
                 $asset = new Asset([
-                    'name' => $symbol,
+                    'name' => self::COIN_NAMES[$symbol] ?? $symbol,
                     'symbol' => $symbol,
                     'unit' => $symbol,
                     'class' => AssetClass::Crypto,

@@ -17,17 +17,21 @@ use Illuminate\Support\Collection;
 /**
  * tkbtc's balance log, turned into a ledger. tkbtc kept no purchases or
  * sales, only each change to an asset's balance, so every transaction made
- * here is a best guess and is flagged estimated:
+ * here is a best guess, and a buy or a sale is flagged estimated:
  *
  * - a rise in an exchange asset's balance is a `buy` at the ask of the tick
  *   nearest in time, and a fall is a `sell` at its bid;
  * - a rise in a manual asset's balance (a metal, with no exchange) is a
- *   `found` at no cost, for the owner to put the real cost on;
+ *   `found` at no cost, and is not flagged: found gold has none, and what
+ *   was bought can have its cost put on by its owner;
  * - a fall in a manual asset's balance is a `sell` at the nearest bid.
  *
  * Each is keyed by its asset and the moment of the change, so a second run
- * adds none twice. The parcels are matched once an asset, at the end, and
- * the units then held are checked against tkbtc's own figure.
+ * adds none twice. An asset that already has transactions from its exchange
+ * (the trade sync, or a backfill from the exchange's report) is left alone:
+ * its real history has replaced these guesses. The parcels are matched once
+ * an asset, at the end, and the units then held are checked against tkbtc's
+ * own figure.
  */
 class AssetLogPass implements Pass
 {
@@ -62,7 +66,13 @@ class AssetLogPass implements Pass
                 continue;
             }
 
-            $added = $this->import($context, $row, $asset);
+            // Once the exchange's own history is in, a guess beside it would count the same units twice.
+            if ($asset->transactions()->where('source', TransactionSource::Exchange)->exists()) {
+                $context->note("{$asset->name} has its real history from the exchange, so its balance log was not brought over.");
+                $added = 0;
+            } else {
+                $added = $this->import($context, $row, $asset);
+            }
 
             if ($added > 0) {
                 $this->matcher->rematch($asset);
@@ -140,9 +150,10 @@ class AssetLogPass implements Pass
                 'total' => Transaction::totalOf($type, $units, $price, Decimal::zero()),
                 'source' => TransactionSource::Import,
                 'external_id' => $key,
-                'estimated' => true,
+                // A buy or a sale is costed by a guess. What was found has no cost to guess at.
+                'estimated' => $type !== TransactionType::Found,
                 'notes' => $type === TransactionType::Found
-                    ? 'Imported from tkbtc, which kept no cost for it. Put the real cost on this.'
+                    ? 'Imported from tkbtc, which kept no cost for it, so it is held at no cost. Put a cost on this if it was bought.'
                     : 'Imported from tkbtc: a change in the balance, costed at the price nearest in time.',
             ]);
 
