@@ -144,6 +144,9 @@ docker compose exec app composer test                 # run the test suite
 
 The ports are set in `.env`.
 
+The scheduler, which fetches prices and syncs the exchanges every 5 minutes, is not started in
+development unless asked for: `docker compose --profile scheduler up -d`.
+
 ## Releasing
 
 `bin/release v1.2.3` checks the code style and runs the tests, tags the commit and offers to push

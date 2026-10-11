@@ -50,8 +50,11 @@ services:
       retries: 3
       start_period: 60s
 
-  # Runs the schedule (exchange sync, price fetch, pruning) once those tasks add entries to it.
+  # Runs the schedule: prices from the real exchange and feed and a sync of every active exchange,
+  # every 5 minutes. Off unless asked for, so a dev site does not call the exchange on a timer:
+  #   docker compose --profile scheduler up -d
   scheduler:
+    profiles: ["scheduler"]
     image: nugget-dev:latest
     depends_on:
       app:

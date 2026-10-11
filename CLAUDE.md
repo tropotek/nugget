@@ -13,7 +13,8 @@ The design and the task list live in `_notes/laravel-rewrite/` (gitignored). `RE
 There is no PHP with SQLite or Composer on the host. Everything runs in the dev containers (`docker-compose.yml`):
 
 ```bash
-docker compose up -d                              # app, vite, scheduler, mailpit
+docker compose up -d                              # app, vite, mailpit
+docker compose --profile scheduler up -d          # the scheduler too: only when working on prices or the sync
 docker compose exec app composer install
 docker compose exec app php artisan migrate                # apply new migrations; keeps the data
 docker compose exec app php artisan db:seed                # add any missing development data (local only)
@@ -38,7 +39,7 @@ bin/release v1.2.3                                # style, tests, tag and push: 
 |---|---|---|
 | `app` | http://localhost:8778 | Octane on FrankenPHP with `--watch`, so PHP changes reload on save |
 | `vite` | http://localhost:5778 | Vite dev server, hot reload |
-| `scheduler` | — | `php artisan schedule:work`: fetches prices from the real exchange and feed and syncs every active exchange every 5 minutes, and prunes prices and read notifications nightly |
+| `scheduler` | — | Off unless started with `--profile scheduler`, so the dev site makes no calls on a timer: the seeded exchanges have random keys, and each sync of one is a failed call to the real exchange. `php artisan schedule:work`: fetches prices from the real exchange and feed and syncs every active exchange every 5 minutes, and prunes prices and read notifications nightly |
 | `mailpit` | http://localhost:8779 | catches all outgoing mail |
 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
