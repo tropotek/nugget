@@ -254,16 +254,21 @@ class DashboardTest extends TestCase
             ->assertDontSee('Other subtotal');
     }
 
-    public function test_an_asset_with_nothing_held_is_left_off_and_an_archived_one_with_units_is_kept(): void
+    public function test_an_asset_with_nothing_held_or_archived_or_another_users_is_left_off(): void
     {
         Asset::factory()->for($this->user)->create(['name' => 'Empty coin']);
+        $this->holding('Bitcoin', '2', '100', '150');
+        // A crumb of a coin sold long ago: archived, but still held and still counted.
         $this->holding('Old coin', '3', '10', '12', ['archived' => true]);
         $this->holding('Their coin', '3', '10', '12', user: User::factory()->create());
 
         $this->get('/')
-            ->assertSeeInOrder(['id="dashboard-holdings"', 'Old coin'], false)
+            ->assertSeeInOrder(['Total value', '$336.00'])
+            ->assertSeeInOrder(['id="dashboard-holdings"', 'Bitcoin'], false)
             ->assertDontSee('Empty coin')
-            ->assertDontSee('Their coin');
+            ->assertDontSee('Old coin')
+            ->assertDontSee('Their coin')
+            ->assertSee('1 holding is hidden from this list, archived or switched off it.');
     }
 
     public function test_a_holding_with_no_price_or_not_in_the_total_is_left_out_of_the_subtotal(): void
@@ -294,10 +299,10 @@ class DashboardTest extends TestCase
             ->assertSeeInOrder(['id="dashboard-holdings"', 'Bitcoin', 'Crypto subtotal', '$300.00', '$200.00'], false)
             ->assertDontSee('Old dust')
             ->assertDontSee('More dust')
-            ->assertSee('2 holdings are hidden from this list.')
+            ->assertSee('2 holdings are hidden from this list, archived or switched off it.')
             ->assertSee('href="'.route('assets.index').'"', false);
 
-        $this->get('/', ['HX-Target' => 'dashboard-holdings'])->assertDontSee('Old dust')->assertSee('2 holdings are hidden from this list.');
+        $this->get('/', ['HX-Target' => 'dashboard-holdings'])->assertDontSee('Old dust')->assertSee('2 holdings are hidden from this list, archived or switched off it.');
     }
 
     public function test_with_every_holding_hidden_the_list_says_so(): void
@@ -306,7 +311,7 @@ class DashboardTest extends TestCase
 
         $this->get('/')
             ->assertSee('Every holding is hidden from the dashboard.')
-            ->assertSee('1 holding is hidden from this list.')
+            ->assertSee('1 holding is hidden from this list, archived or switched off it.')
             ->assertDontSee('Nothing is held yet.');
     }
 

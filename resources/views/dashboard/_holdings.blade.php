@@ -3,7 +3,7 @@
     #dashboard-holdings, which it does every minute, as the totals do.
     $holdings: the App\Ledger\Valuation of each asset with units held, by class value.
     $history: each asset's bids of the last 30 days, oldest first, by asset id.
-    $hidden: how many holdings their owner has taken off the dashboard.
+    $hidden: how many holdings are archived or have been taken off the dashboard.
 --}}
 <div class="card" id="dashboard-holdings" hx-get="{{ route('dashboard') }}" hx-trigger="every 60s" hx-target="#dashboard-holdings" hx-swap="outerHTML">
     <div class="card-body">
@@ -74,7 +74,7 @@
 
         @if ($hidden > 0)
             <div class="form-text mt-2">
-                {{ $hidden === 1 ? '1 holding is' : $hidden.' holdings are' }} hidden from this list.
+                {{ $hidden === 1 ? '1 holding is' : $hidden.' holdings are' }} hidden from this list, archived or switched off it.
                 {{ $hidden === 1 ? 'It still counts' : 'They still count' }} toward the totals where set to.
                 <a href="{{ route('assets.index') }}">Change which are shown</a>.
             </div>

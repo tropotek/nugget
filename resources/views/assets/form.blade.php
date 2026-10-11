@@ -150,7 +150,7 @@
                                     <input type="checkbox" class="form-check-input" id="archived" name="archived" value="1"{{ old('archived', $asset->archived) ? ' checked' : '' }}>
                                     <label class="form-check-label" for="archived">Archived</label>
                                 </div>
-                                <div class="form-text">An archived asset is left off the lists. Its transactions are kept.</div>
+                                <div class="form-text">An archived asset is left off the lists and the dashboard. Its transactions are kept.</div>
                             </div>
                         @endif
 
