@@ -39,6 +39,9 @@ run `docker compose -f docker-compose-live.yml up -d` to recreate the containers
 |---|---|---|
 | `NUGGET_PORT` | `8080` | the host port the site is published on |
 | `APP_URL` | `http://localhost:8080` | the address people reach it at; used in emails |
+| `TRUSTED_PROXIES` | none | the reverse proxy in front whose forwarded headers are believed: its address, a comma list, or `*` |
+| `SESSION_SECURE_COOKIE` | off | `true` when the site is served over HTTPS |
+| `NUGGET_TLS_CERT`, `NUGGET_TLS_KEY` | none | a certificate and its key, for HTTPS from the container itself |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | mail is written to the log | SMTP, for password reset emails |
 | `APP_KEY` | generated into `data/private/.app-key` | the key that encrypts sessions and exchange keys |
 | `NUGGET_LOGIN_MAX_ATTEMPTS`, `NUGGET_LOGIN_LOCKOUT_MINUTES` | `5`, `15` | failed logins before an email is locked out from an address, and for how long |
@@ -53,8 +56,39 @@ The rest is set in the site itself. An admin sets the site name, the parcel matc
 the first financial year reported under **Settings**. Each user sets their timezone on **Profile**,
 which decides the day a sale falls on and so its financial year.
 
-The container serves plain HTTP. Nugget does not yet read a reverse proxy's forwarded headers, so
-it is for a private network as it stands.
+### HTTPS
+
+Port 8080 is plain HTTP, which is enough on a private network. For HTTPS there are two ways, and
+both want `APP_URL` set to the `https://` address and `SESSION_SECURE_COOKIE=true`.
+
+**A reverse proxy in front** (Caddy, nginx) that ends TLS and sends to `NUGGET_PORT`. Tell Nugget
+to believe it, or its links and redirects come out as `http://`:
+
+```bash
+TRUSTED_PROXIES=192.168.0.20        # the proxy's address, a comma list, or * for any
+```
+
+A Caddy site for it is two lines:
+
+```
+nugget.example.org {
+    reverse_proxy 192.168.0.7:8080
+}
+```
+
+**A certificate of your own**, served by the container. Put the certificate (with its chain) and
+the key in `certs/` beside the compose file, readable by uid 1000, uncomment the two lines marked
+`own certificate` in `docker-compose-live.yml`, and set:
+
+```bash
+NUGGET_TLS_CERT=/certs/fullchain.pem
+NUGGET_TLS_KEY=/certs/privkey.pem
+NUGGET_TLS_PORT=443                 # the host port; 443 is the default
+```
+
+The container then answers HTTPS on its port 8443 as well as HTTP on 8080. It reads the files when
+it starts, so restart it after renewing the certificate. It stops with a message if either file is
+missing or unreadable.
 
 ## Upgrade
 

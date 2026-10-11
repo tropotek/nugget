@@ -20,6 +20,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Reverse proxy
+    |--------------------------------------------------------------------------
+    |
+    | The proxies in front of the site whose forwarded headers are believed:
+    | `*` for any, or a comma list of addresses and ranges. With none, the
+    | site takes every request as it arrives. Set it when a proxy ends TLS,
+    | or links and redirects come out as http.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Development seed data
     |--------------------------------------------------------------------------
     |

@@ -13,9 +13,17 @@
 # Put settings in a .env file next to this one (optional), e.g.:
 #   NUGGET_PORT=8080
 #   APP_URL=https://nugget.example.org
-#   SESSION_SECURE_COOKIE=true   # when the site is served over https
+#   SESSION_SECURE_COOKIE=true   # when the site is served over https, either way below
 #   MAIL_MAILER=smtp  MAIL_HOST=…  MAIL_PORT=587  MAIL_USERNAME=…  MAIL_PASSWORD=…  MAIL_FROM_ADDRESS=nugget@example.org
 #   TKBTC_DB_HOST=…  TKBTC_DB_PORT=…  TKBTC_DB_DATABASE=…  TKBTC_DB_USERNAME=…  TKBTC_DB_PASSWORD=…   # for the import
+#
+# HTTPS, one of two ways:
+#   A reverse proxy in front that ends TLS (Caddy, nginx), sending to NUGGET_PORT:
+#     TRUSTED_PROXIES=192.168.0.20   # the proxy's address, a comma list, or * for any
+#   Or a certificate of your own, served by the container on 8443. Uncomment the two lines marked
+#   "own certificate" below, put the files in ./certs, readable by uid 1000, and set:
+#     NUGGET_TLS_CERT=/certs/fullchain.pem
+#     NUGGET_TLS_KEY=/certs/privkey.pem
 #
 # data/private/.app-key decrypts every exchange's API key and secret: back it up with the database
 # and never lose it.
@@ -34,6 +42,7 @@ x-nugget: &nugget
     #   data/private/.app-key     generated APP_KEY (unless APP_KEY is set in .env)
     #   data/logs/                daily logs, kept 30 days
     - ./data:/app/data
+    # - ./certs:/certs:ro                      # own certificate
 
 services:
   app:
@@ -43,6 +52,7 @@ services:
     ports:
       # Host port → the container's FrankenPHP/Octane on 8080 (plain HTTP; put TLS in a reverse proxy).
       - "${NUGGET_PORT:-8080}:8080"
+      # - "${NUGGET_TLS_PORT:-443}:8443"       # own certificate
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
       interval: 30s

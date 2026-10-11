@@ -34,6 +34,24 @@ if [ -z "${APP_KEY:-}" ]; then
     export APP_KEY
 fi
 
+# HTTPS from the container itself, with a certificate the operator installed: a second site on
+# 8443 that hands each request to the plain one on APP_PORT, as a reverse proxy in front would.
+# So the app has to trust this container's own address, or it would take every request for http.
+if [ -n "${NUGGET_TLS_CERT:-}" ] || [ -n "${NUGGET_TLS_KEY:-}" ]; then
+    for file in "${NUGGET_TLS_CERT:-}" "${NUGGET_TLS_KEY:-}"; do
+        if [ -z "$file" ] || ! as_app test -r "$file"; then
+            echo "nugget: NUGGET_TLS_CERT and NUGGET_TLS_KEY must each name a file the app user (uid 1000) can read. '$file' is not one." >&2
+            exit 1
+        fi
+    done
+    NUGGET_TLS_SITE="https://:8443 {
+	tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY
+	reverse_proxy 127.0.0.1:${APP_PORT}
+}"
+    TRUSTED_PROXIES="${TRUSTED_PROXIES:+$TRUSTED_PROXIES,}127.0.0.1"
+    export NUGGET_TLS_SITE TRUSTED_PROXIES
+fi
+
 if [ "${NUGGET_MIGRATE:-1}" = 1 ]; then
     as_app php artisan migrate --force --no-interaction
 fi

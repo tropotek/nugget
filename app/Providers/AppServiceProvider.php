@@ -7,6 +7,7 @@ use App\Models\Contracts\Owned;
 use App\Models\User;
 use App\Policies\OwnerPolicy;
 use App\Support\Settings;
+use App\Support\TrustedProxies;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -40,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
             : 'App\\Policies\\'.class_basename($model).'Policy');
 
         Paginator::useBootstrapFive();
+
+        TrustedProxies::apply();
 
         // The API: so many requests a minute for each token.
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('nugget.api.per_minute'))

@@ -66,6 +66,27 @@ class ProductionImageTest extends TestCase
         $this->assertStringContainsString('disable: true', $scheduler);
     }
 
+    public function test_the_image_can_serve_https_with_a_certificate_of_the_operators(): void
+    {
+        $entry = file_get_contents(base_path('docker/entry.sh'));
+        $caddyfile = file(base_path('docker/Caddyfile'), FILE_IGNORE_NEW_LINES);
+
+        // The entry script writes the site and has the app trust it as a proxy.
+        $this->assertStringContainsString('tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY', $entry);
+        $this->assertStringContainsString('reverse_proxy 127.0.0.1:${APP_PORT}', $entry);
+        $this->assertStringContainsString('export NUGGET_TLS_SITE TRUSTED_PROXIES', $entry);
+
+        // The Caddyfile has a place for it, on a line of its own.
+        $this->assertContains('{$NUGGET_TLS_SITE}', $caddyfile);
+
+        // A placeholder is filled in inside a comment too, where a value of several lines breaks the file.
+        foreach ($caddyfile as $line) {
+            if (str_starts_with(ltrim($line), '#')) {
+                $this->assertStringNotContainsString('{$', $line);
+            }
+        }
+    }
+
     public function test_the_image_logs_to_the_data_directory(): void
     {
         $this->assertSame(base_path('data/logs/nugget.log'), config('logging.channels.data.path'));

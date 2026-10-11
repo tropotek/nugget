@@ -1,5 +1,9 @@
-# Octane's FrankenPHP Caddyfile (vendor/laravel/octane/src/Commands/stubs/Caddyfile), unchanged.
-# Kept here so the site config can diverge. Re-sync with the stub when upgrading Octane.
+# Octane's FrankenPHP Caddyfile (vendor/laravel/octane/src/Commands/stubs/Caddyfile), with one
+# addition: the NUGGET_TLS_SITE placeholder, the HTTPS site docker/entry.sh writes when it is
+# given a certificate. Re-sync with the stub when upgrading Octane.
+#
+# A placeholder is filled in before the file is read, comments included: never write one in a
+# comment with its braces, or a value of several lines spills out of the comment.
 {
 	{$CADDY_GLOBAL_OPTIONS}
 
@@ -15,6 +19,8 @@
 }
 
 {$CADDY_EXTRA_CONFIG}
+
+{$NUGGET_TLS_SITE}
 
 {$CADDY_SERVER_SERVER_NAME} {
 	log {
