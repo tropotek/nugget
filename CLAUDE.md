@@ -70,6 +70,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `app/Mcp/`: the MCP server and its tools.
 - `tests/Feature`, `tests/Unit`: PHPUnit tests.
 - `_notes/`: local planning docs, gitignored.
+- `docs/`: the user's docs. `tax-report.md` sets out the report's rules and limits: change it when the matcher or the calculator changes. `backup-restore.md` is the backup of `data/`.
 - `version.md`: the app version.
 
 ## Conventions
