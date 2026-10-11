@@ -417,6 +417,21 @@ class TradeSyncTest extends TestCase
         $this->assertStringNotContainsString('ADA-AUD', (string) $this->exchange->last_sync_note);
     }
 
+    public function test_a_trade_in_the_same_second_as_the_end_of_the_report_is_the_reports_last_row(): void
+    {
+        // The report gives times to the second; the API gives the Cardano buy as 22:40:10.5.
+        $this->exchange->forceFill(['trades_after' => '2025-06-11 22:40:10'])->save();
+        Transaction::factory()->for($this->bitcoin)->buy('0.02', '150000', '25.5')->fromExchange('csv-900000003')->create(['occurred_at' => '2025-06-10 02:00:00']);
+        Transaction::factory()->for($this->cardano)->buy('1000', '1.05', '8.93')->fromExchange('csv-900000007')->create(['occurred_at' => '2025-06-11 22:40:10']);
+        $this->fakeTrades();
+
+        $this->assertTrue($this->sync());
+
+        // It is not stored a second time under the API's own trade id.
+        $this->assertCount(1, $this->ledger($this->cardano));
+        $this->assertStringStartsWith('csv-900000007 ', $this->ledger($this->cardano)[0]);
+    }
+
     // Telling the owner
 
     public function test_a_sync_that_stores_trades_tells_the_owner_once(): void

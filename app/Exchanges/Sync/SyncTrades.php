@@ -110,8 +110,9 @@ class SyncTrades
             $added = [];
 
             foreach ($trades as $trade) {
-                // The exchange's own report has already given everything up to here.
-                if ($exchange->trades_after && $trade->at->lessThanOrEqualTo($exchange->trades_after)) {
+                // The exchange's own report has already given everything up to here. Its times are to
+                // the second and the API's are finer, so a trade in that last second is the report's.
+                if ($exchange->trades_after && $trade->at->startOfSecond()->lessThanOrEqualTo($exchange->trades_after)) {
                     continue;
                 }
 
