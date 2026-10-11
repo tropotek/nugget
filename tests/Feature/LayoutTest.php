@@ -71,7 +71,8 @@ class LayoutTest extends TestCase
 
     public function test_every_page_names_the_favicon_in_the_forms_browsers_ask_for(): void
     {
-        $this->get('/login')
+        $this->get('/')
+            ->assertOk()
             ->assertSee('<link rel="icon" href="/favicon.ico" sizes="32x32">', false)
             ->assertSee('<link rel="icon" type="image/svg+xml" href="/favicon.svg">', false)
             ->assertSee('<link rel="apple-touch-icon" href="/apple-touch-icon.png">', false);
