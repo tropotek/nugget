@@ -21,9 +21,13 @@ use LogicException;
  * An archived asset is left off the lists. Its ledger and its holding stay as
  * they are.
  *
+ * `in_total` says whether its value counts toward the portfolio's totals, and
+ * `on_dashboard` whether it is listed among the dashboard's holdings. The two
+ * are separate: an asset can be hidden from the list and still be counted.
+ *
  * The owner is set through the user's relation, so it is not fillable.
  */
-#[Fillable(['name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol', 'in_total', 'archived', 'notes'])]
+#[Fillable(['name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol', 'in_total', 'on_dashboard', 'archived', 'notes'])]
 class Asset extends Model implements Owned
 {
     /** @use HasFactory<AssetFactory> */
@@ -32,6 +36,7 @@ class Asset extends Model implements Owned
     /** @var array<string, mixed> */
     protected $attributes = [
         'in_total' => true,
+        'on_dashboard' => true,
         'archived' => false,
     ];
 
@@ -48,6 +53,7 @@ class Asset extends Model implements Owned
         return [
             'class' => AssetClass::class,
             'in_total' => 'boolean',
+            'on_dashboard' => 'boolean',
             'archived' => 'boolean',
         ];
     }

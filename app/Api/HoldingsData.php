@@ -34,6 +34,7 @@ class HoldingsData
                 'asset' => [
                     ...Format::asset($valuation->holding->asset),
                     'in_total' => $valuation->holding->asset->in_total,
+                    'on_dashboard' => $valuation->holding->asset->on_dashboard,
                     'archived' => $valuation->holding->asset->archived,
                 ],
                 'units' => Format::number($valuation->holding->units),

@@ -281,6 +281,42 @@ class DashboardTest extends TestCase
         ], false);
     }
 
+    public function test_an_asset_taken_off_the_dashboard_is_left_out_of_the_list_and_still_counted(): void
+    {
+        $this->holding('Bitcoin', '2', '100', '150');
+        $this->holding('Old dust', '1', '10', '40', ['on_dashboard' => false]);
+        $this->holding('More dust', '1', '10', '60', ['on_dashboard' => false, 'in_total' => false]);
+
+        $this->get('/')
+            ->assertOk()
+            // $300 and the $40 that is hidden but counted; the other is neither shown nor counted.
+            ->assertSeeInOrder(['Total value', '$340.00', 'Cost base', '$210.00'])
+            ->assertSeeInOrder(['id="dashboard-holdings"', 'Bitcoin', 'Crypto subtotal', '$300.00', '$200.00'], false)
+            ->assertDontSee('Old dust')
+            ->assertDontSee('More dust')
+            ->assertSee('2 holdings are hidden from this list.')
+            ->assertSee('href="'.route('assets.index').'"', false);
+
+        $this->get('/', ['HX-Target' => 'dashboard-holdings'])->assertDontSee('Old dust')->assertSee('2 holdings are hidden from this list.');
+    }
+
+    public function test_with_every_holding_hidden_the_list_says_so(): void
+    {
+        $this->holding('Old dust', '1', '10', '40', ['on_dashboard' => false]);
+
+        $this->get('/')
+            ->assertSee('Every holding is hidden from the dashboard.')
+            ->assertSee('1 holding is hidden from this list.')
+            ->assertDontSee('Nothing is held yet.');
+    }
+
+    public function test_nothing_is_said_of_hiding_when_nothing_is_hidden(): void
+    {
+        $this->holding('Bitcoin', '2', '100', '150');
+
+        $this->get('/')->assertDontSee('hidden from this list');
+    }
+
     public function test_each_holding_has_a_sparkline_of_its_price_over_30_days(): void
     {
         $rising = $this->holding('Bitcoin', '2', '100', '150');

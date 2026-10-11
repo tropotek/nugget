@@ -141,7 +141,9 @@
                             @endswitch
                         </dd>
                         <dt class="col-5">In the total</dt>
-                        <dd @class(['col-7', 'mb-0' => ! $asset->archived && ! $asset->notes])>{{ $asset->in_total ? 'Yes' : 'No' }}</dd>
+                        <dd class="col-7">{{ $asset->in_total ? 'Yes' : 'No' }}</dd>
+                        <dt class="col-5">On the dashboard</dt>
+                        <dd @class(['col-7', 'mb-0' => ! $asset->archived && ! $asset->notes])>{{ $asset->on_dashboard ? 'Yes' : 'No' }}</dd>
                         @if ($asset->archived)
                             <dt class="col-5">Status</dt>
                             <dd @class(['col-7', 'mb-0' => ! $asset->notes])><span class="badge bg-secondary">Archived</span></dd>

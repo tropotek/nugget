@@ -54,6 +54,9 @@
                                     @unless ($asset->in_total)
                                         <span class="badge bg-light text-dark">Not in total</span>
                                     @endunless
+                                    @unless ($asset->on_dashboard)
+                                        <span class="badge bg-light text-dark">Not on dashboard</span>
+                                    @endunless
                                 </td>
                                 <td class="text-end text-nowrap">
                                     <a href="{{ route('transactions.create', ['asset' => $asset->id]) }}" class="btn btn-sm btn-light">Add transaction</a>

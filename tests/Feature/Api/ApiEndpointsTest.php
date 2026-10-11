@@ -115,7 +115,7 @@ class ApiEndpointsTest extends TestCase
             ->assertJsonPath('data.currency', 'AUD')
             ->assertJsonCount(3, 'data.holdings')
             ->assertJsonPath('data.holdings.0', [
-                'asset' => ['id' => $this->bitcoin->id, 'name' => 'Bitcoin', 'symbol' => 'BTC', 'class' => 'crypto', 'unit' => 'BTC', 'in_total' => true, 'archived' => false],
+                'asset' => ['id' => $this->bitcoin->id, 'name' => 'Bitcoin', 'symbol' => 'BTC', 'class' => 'crypto', 'unit' => 'BTC', 'in_total' => true, 'on_dashboard' => true, 'archived' => false],
                 'units' => '1',
                 'cost_base' => '5025.00',
                 'average_cost' => '5025',

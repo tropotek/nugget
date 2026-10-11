@@ -24,7 +24,7 @@ class AssetSchemaTest extends TestCase
         $this->assertEqualsCanonicalizing(
             [
                 'id', 'user_id', 'name', 'symbol', 'class', 'unit', 'exchange_id', 'market_id', 'feed_symbol',
-                'in_total', 'archived', 'notes', 'created_at', 'updated_at',
+                'in_total', 'on_dashboard', 'archived', 'notes', 'created_at', 'updated_at',
             ],
             Schema::getColumnListing('assets'),
         );
@@ -47,6 +47,7 @@ class AssetSchemaTest extends TestCase
             ->fresh();
 
         $this->assertTrue($asset->in_total);
+        $this->assertTrue($asset->on_dashboard);
         $this->assertNull($asset->exchange);
         $this->assertNull($asset->market_id);
         $this->assertNull($asset->feed_symbol);

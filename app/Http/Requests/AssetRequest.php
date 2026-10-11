@@ -54,6 +54,7 @@ class AssetRequest extends FormRequest
             'market_id' => [$exchange, 'required', 'string', 'max:64', $this->marketOnExchange(...)],
             'feed_symbol' => [$feed, 'required', 'string', 'max:64'],
             'in_total' => ['boolean'],
+            'on_dashboard' => ['boolean'],
             'archived' => [Rule::excludeIf(! $asset), 'boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];

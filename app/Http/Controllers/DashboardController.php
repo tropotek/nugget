@@ -68,8 +68,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * The assets with units held, an archived one included, by class in the
-     * order of AssetClass, with each one's bids of the last 30 days.
+     * The assets with units held that are shown on the dashboard, an archived
+     * one included, by class in the order of AssetClass, with each one's bids
+     * of the last 30 days, and how many holdings are hidden.
      *
      * @param  Collection<int, Valuation>  $all
      * @return array<string, mixed>
@@ -77,6 +78,9 @@ class DashboardController extends Controller
     private function holdings(User $user, Collection $all): array
     {
         $held = $all->reject(fn (Valuation $valuation) => $valuation->holding->isEmpty());
+        // What its owner has taken off the dashboard is still held, and still counted in the totals.
+        $hidden = $held->reject(fn (Valuation $valuation) => $valuation->holding->asset->on_dashboard)->count();
+        $held = $held->filter(fn (Valuation $valuation) => $valuation->holding->asset->on_dashboard);
         $byClass = $held->groupBy(fn (Valuation $valuation) => $valuation->holding->asset->class->value);
 
         $history = Price::query()
@@ -91,6 +95,7 @@ class DashboardController extends Controller
                 ->filter(fn (AssetClass $class) => $byClass->has($class->value))
                 ->mapWithKeys(fn (AssetClass $class) => [$class->value => $byClass[$class->value]]),
             'history' => $history,
+            'hidden' => $hidden,
         ];
     }
 }

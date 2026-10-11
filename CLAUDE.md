@@ -82,6 +82,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - Show a gain or loss with `<x-gain :value="…" :percent="…" />`.
 - A small line of amounts over time is `<x-sparkline :amounts="…" label="…" />`: an inline SVG with no script. `App\Support\Sparkline` is the one place a `Decimal` becomes a float, to place the line.
 - An asset's symbol and unit decide which assets transfers join, so they are fixed once it has a transaction (`$asset->hasTransactions()`), and it can then be archived but not deleted. An archived asset is left off the lists; its ledger and its holding are unchanged.
+- An asset has two separate switches: `in_total` (its value counts toward the portfolio totals and the value chart) and `on_dashboard` (it is listed among the dashboard's holdings). Hiding one from the list does not take it out of the totals.
 - An asset's price source is one choice, `App\Enums\PricedBy` (exchange, feed or none), read with `$asset->pricedBy()`. A form saves only the chosen source's fields and nulls the others.
 - A transaction's `units` are positive except on an adjustment; use `signedUnits()` for the change to a holding. Its `total` is the AUD cost with the fee for units coming in, and the AUD proceeds less the fee for units going out.
 - An amount typed into a form is validated with `App\Rules\Amount` (a plain decimal string with a limit on its places) and turned into a `Decimal`. Any arithmetic on amounts in JavaScript is done in `BigInt`, never in floats, and only to preview what the server works out.

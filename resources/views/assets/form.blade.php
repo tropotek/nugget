@@ -134,6 +134,15 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <input type="hidden" name="on_dashboard" value="0">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" id="on_dashboard" name="on_dashboard" value="1"{{ old('on_dashboard', $asset->on_dashboard) ? ' checked' : '' }}>
+                                <label class="form-check-label" for="on_dashboard">Show on the dashboard</label>
+                            </div>
+                            <div class="form-text">Off hides it from the dashboard's list of holdings. It is still counted in the total while the switch above is on.</div>
+                        </div>
+
                         @if ($asset->exists)
                             <div class="mb-3">
                                 <input type="hidden" name="archived" value="0">

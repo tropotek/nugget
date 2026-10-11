@@ -465,4 +465,37 @@ class AssetManagerTest extends TestCase
             ->put(route('assets.update', $asset), $change(['market_id' => 'WENT-AUD']))
             ->assertSessionHasErrors('market_id');
     }
+
+    // Showing on the dashboard
+
+    public function test_an_asset_is_shown_on_the_dashboard_unless_switched_off(): void
+    {
+        $this->actingAs($this->user)->get('/assets/create')
+            ->assertSeeInOrder(['name="on_dashboard" value="1" checked', 'Show on the dashboard'], false);
+
+        $this->post('/assets', $this->form())->assertSessionHasNoErrors();
+
+        $this->assertTrue($this->user->assets()->sole()->on_dashboard);
+    }
+
+    public function test_an_asset_can_be_taken_off_the_dashboard_and_put_back(): void
+    {
+        $asset = $this->asset(['name' => 'Old coin']);
+
+        $this->actingAs($this->user)->put(route('assets.update', $asset), $this->form(['name' => 'Old coin', 'on_dashboard' => '0']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse($asset->refresh()->on_dashboard);
+        // Whether it counts toward the total is its own switch.
+        $this->assertTrue($asset->in_total);
+
+        $this->get('/assets')->assertSeeInOrder(['Old coin', 'Not on dashboard']);
+        $this->get(route('assets.show', $asset))->assertSeeInOrder(['On the dashboard', 'No']);
+        $this->get(route('assets.edit', $asset))->assertSee('name="on_dashboard" value="1">', false);
+
+        $this->put(route('assets.update', $asset), $this->form(['name' => 'Old coin', 'on_dashboard' => '1']));
+
+        $this->assertTrue($asset->refresh()->on_dashboard);
+        $this->get('/assets')->assertDontSee('Not on dashboard');
+    }
 }
