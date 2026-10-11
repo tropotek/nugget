@@ -1,0 +1,13 @@
+#!/bin/sh
+# `docker compose exec app artisan …`: runs artisan as the app user even when exec'd as root,
+# so a command never leaves root-owned files in /app/data or storage. The key the entry script
+# made is read here too, since an exec'd shell does not inherit what that script exported.
+cd /app
+if [ -z "${APP_KEY:-}" ] && [ -s /app/data/private/.app-key ]; then
+    APP_KEY="$(cat /app/data/private/.app-key)"
+    export APP_KEY
+fi
+if [ "$(id -u)" = 0 ]; then
+    exec su-exec app php artisan "$@"
+fi
+exec php artisan "$@"

@@ -102,6 +102,15 @@ return [
             'processors' => [PsrLogMessageProcessor::class],
         ],
 
+        // Daily files in data/logs/, kept with the rest of the site's data. The shipped image logs here and to stderr.
+        'data' => [
+            'driver' => 'daily',
+            'path' => base_path('data/logs/nugget.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => (int) env('LOG_DAILY_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'stderr' => [
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),

@@ -29,6 +29,7 @@ docker compose exec -T app php artisan nugget:backfill ID --csv=php://stdin < re
 docker compose exec app composer test
 docker compose exec app vendor/bin/pint
 docker compose build app                          # after changing the Dockerfile
+docker build -t nugget .                          # the shipped image (the Dockerfile's prod target, its default)
 ```
 
 | Service | Where | What |
@@ -57,7 +58,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - `tests/Fixtures/`: recorded API responses. `tests/Fakes/`: stand-ins for outside services.
 - `data/`: runtime data, gitignored. The SQLite database is `data/nugget.sqlite` (WAL mode). In production this directory is the mounted volume.
 - `database/migrations/`: schema.
-- `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers. `docker/Caddyfile` is Octane's FrankenPHP site config.
+- `Dockerfile`, `docker-compose.yml`, `docker/`: the dev image and containers, and the shipped image (the `prod` target). `docker/Caddyfile` is Octane's FrankenPHP site config; `docker/entry.sh` is the shipped image's entrypoint (data directory, `APP_KEY`, migrate, cache) and `docker/artisan` its `artisan` command.
 - `resources/views/components/layouts/`: the page layouts. `app` is the signed-in shell (top bar, sidebar, page title, flash messages, footer) and `guest` the card used by the login pages; the rest are their parts.
 - `/up` (`HealthController`, `App\Support\HealthStatus`): the health check the containers poll. 200 with the version when the database accepts a write, 503 otherwise.
 - `config/nugget.php`: Nugget's own settings.
@@ -141,6 +142,7 @@ The containers load `.env` as real environment variables, so a change to `.env` 
 - A model that belongs to a user implements `App\Models\Contracts\Owned`. That gives it `App\Policies\OwnerPolicy` with no policy class of its own: the owner only, with no admin bypass. Authorise every read and write of one with `Gate::authorize`.
 - An admin-editable setting is read with `Settings::get('key')` (`App\Facades\Settings`). To add one, add it to `definitions()` in `App\Support\Settings` with its default, type and rules, and a field to `resources/views/settings/edit.blade.php`. An unknown key throws.
 - A financial year is named by the year it ends in: 2025 is 2024–25. Use `App\Support\FinancialYear` for its dates, which depend on the user's timezone. A year is open, and has a tax report, when it is the `first_report_year` setting or later. `App\Ledger\ReportYears` gives the years: `forUser` (those with disposals), `open` (every open year up to the one in progress, sold in or not: the report's picker) and `all` (the open ones and the closed ones with sales).
+- In the shipped image everything that must survive an upgrade is in `/app/data`: the database, `private/.app-key` and `logs/`. The site and the scheduler are two containers of that one image sharing it, so the cache and the sessions are in the database, never in files: a cache lock has to be seen by both. A file that must not reach the image goes in `.dockerignore`.
 - `APP_ENV` is `local` in development, `testing` under PHPUnit and `production` when live. Check it with `app()->environment(…)`, never by reading `.env`.
 - `Database\Seeders\DatabaseSeeder` holds the development data. It only adds what is missing and does nothing in production. When a task adds a table, add realistic made-up rows for it there, owned by the seeded users.
 - Run Pint before committing.

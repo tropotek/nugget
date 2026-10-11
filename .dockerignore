@@ -1,0 +1,41 @@
+# Built inside the image or mounted at runtime
+.git
+.github
+.idea
+.vscode
+.codex
+.cursor
+.claude
+_notes
+data
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+public/frankenphp-worker.php
+public/fonts-manifest.dev.json
+
+# Secrets and local state
+.env
+.env.*
+!.env.example
+auth.json
+database/*.sqlite
+database/*.sqlite-journal
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing
+storage/app/*
+storage/pail
+
+# Dev-only
+frankenphp
+tests
+phpunit.xml
+.phpunit.cache
+.phpunit.result.cache
+docker-compose*.yml
+*.log
