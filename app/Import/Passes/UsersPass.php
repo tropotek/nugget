@@ -15,7 +15,9 @@ use Illuminate\Support\Str;
  * tkbtc's users: a `user` row joined to its `auth` row, which has the email,
  * the password hash, the timezone and whether it is active.
  *
- * A user whose email is already in Nugget is matched and left as it is. A
+ * A user whose email is already in Nugget is matched and left as it is. An
+ * inactive user with no exchange and no asset in tkbtc is passed over: they
+ * could not sign in and own nothing, and Nugget never deletes a user. A
  * password that Nugget can verify (bcrypt) is carried over; any other user
  * gets one nobody knows and has to use "Forgot your password?".
  *
@@ -63,6 +65,12 @@ class UsersPass implements Pass
                 continue;
             }
 
+            if (! $row->active && ! $this->ownsAnything($context, (int) $row->user_id)) {
+                $context->note("{$email} is inactive in tkbtc and owns nothing there, so it was not imported.");
+
+                continue;
+            }
+
             $context->map(self::TYPE, $row->user_id, $this->create($context, $row, $email)->id);
             $imported++;
         }
@@ -84,6 +92,17 @@ class UsersPass implements Pass
             ->join('auth', fn ($join) => $join->on('auth.fid', '=', 'user.user_id')->where('auth.fkey', 'like', '%User'))
             ->orderBy('user.user_id')
             ->get(['user.user_id', 'user.given_name', 'user.family_name', 'auth.email', 'auth.password', 'auth.permissions', 'auth.timezone', 'auth.active']);
+    }
+
+    /**
+     * Whether a tkbtc user has an exchange or an asset, which the later passes bring over to them.
+     */
+    private function ownsAnything(ImportContext $context, int $userId): bool
+    {
+        $tkbtc = $context->source->db();
+
+        return $tkbtc->table('exchange')->where('user_id', $userId)->exists()
+            || $tkbtc->table('asset')->where('user_id', $userId)->exists();
     }
 
     private function create(ImportContext $context, object $row, string $email): User

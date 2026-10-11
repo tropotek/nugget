@@ -89,6 +89,7 @@ class UsersAndExchangesPassTest extends TestCase
     public function test_a_user_without_the_admin_permission_is_a_member_and_an_inactive_one_stays_inactive(): void
     {
         $this->tkbtcUser(3, 'Mel', '', 'mel@example.com', ['permissions' => 6, 'active' => 0]);
+        $this->tkbtcExchange(1, 3, 'btcmarkets');
 
         $this->import();
 
@@ -102,6 +103,7 @@ class UsersAndExchangesPassTest extends TestCase
     {
         $this->tkbtcUser(2, 'Pat', 'Example', 'pat@example.com', ['password' => md5('old style')]);
         $this->tkbtcUser(3, '', '', 'nobody@example.com', ['password' => '', 'active' => 0]);
+        $this->tkbtc()->table('asset')->insert(['asset_id' => 1, 'market_id' => 1, 'user_id' => 3]);
 
         $context = $this->import();
 
@@ -141,6 +143,43 @@ class UsersAndExchangesPassTest extends TestCase
         $this->assertContains('pat@example.com is already a Nugget user and was left as it is.', $context->notes);
         // Their exchange comes over to them.
         $this->assertSame($existing->id, Exchange::sole()->user_id);
+    }
+
+    public function test_an_inactive_user_who_owns_nothing_is_passed_over(): void
+    {
+        $this->tkbtcUser(2, 'Pat', 'Example', 'pat@example.com');
+        $this->tkbtcUser(3, 'Old', 'Test', 'Test@Example.com', ['active' => 0]);
+
+        $context = $this->import();
+
+        // An active user comes over whether or not they own anything.
+        $this->assertSame('pat@example.com', User::sole()->email);
+        $this->assertNull($context->newId('user', 3));
+        $this->assertContains('test@example.com is inactive in tkbtc and owns nothing there, so it was not imported.', $context->notes);
+        $this->assertSame([], $context->warnings);
+    }
+
+    public function test_an_inactive_user_with_an_exchange_or_an_asset_still_comes_over(): void
+    {
+        $this->tkbtcUser(3, 'Has', 'Exchange', 'exchange@example.com', ['active' => 0]);
+        $this->tkbtcExchange(1, 3, 'btcmarkets');
+        $this->tkbtcUser(4, 'Has', 'Asset', 'asset@example.com', ['active' => 0]);
+        $this->tkbtc()->table('asset')->insert(['asset_id' => 1, 'market_id' => 1, 'user_id' => 4]);
+
+        $this->import();
+
+        $this->assertSame(['asset@example.com', 'exchange@example.com'], User::orderBy('email')->pluck('email')->all());
+        $this->assertSame(0, User::where('active', true)->count());
+    }
+
+    public function test_an_inactive_user_already_in_nugget_is_still_matched(): void
+    {
+        $existing = User::factory()->create(['email' => 'test@example.com']);
+        $this->tkbtcUser(3, 'Old', 'Test', 'test@example.com', ['active' => 0]);
+
+        $context = $this->import();
+
+        $this->assertSame($existing->id, $context->newId('user', 3));
     }
 
     public function test_a_user_row_with_no_auth_row_or_no_email_is_not_imported(): void
