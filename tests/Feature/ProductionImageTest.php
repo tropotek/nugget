@@ -66,15 +66,21 @@ class ProductionImageTest extends TestCase
         $this->assertStringContainsString('disable: true', $scheduler);
     }
 
-    public function test_the_image_can_serve_https_with_a_certificate_of_the_operators(): void
+    public function test_the_image_serves_https_itself_when_its_server_name_is_a_host_name(): void
     {
         $entry = file_get_contents(base_path('docker/entry.sh'));
         $caddyfile = file(base_path('docker/Caddyfile'), FILE_IGNORE_NEW_LINES);
 
-        // The entry script writes the site and has the app trust it as a proxy.
-        $this->assertStringContainsString('tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY', $entry);
+        // ":80", or no name, is plain HTTP only. A host name gets a site of its own, which the app trusts as a proxy.
+        $this->assertStringContainsString("'' | :*)", $entry);
+        $this->assertStringContainsString('NUGGET_TLS_SITE="$SERVER_NAME {', $entry);
         $this->assertStringContainsString('reverse_proxy 127.0.0.1:${APP_PORT}', $entry);
-        $this->assertStringContainsString('export NUGGET_TLS_SITE TRUSTED_PROXIES', $entry);
+        $this->assertStringContainsString('TRUSTED_PROXIES="${TRUSTED_PROXIES:+$TRUSTED_PROXIES,}127.0.0.1"', $entry);
+
+        // Caddy's own certificate unless one is named, and what it gets is kept in the data directory.
+        $this->assertStringContainsString('tls="${NUGGET_TLS:+tls $NUGGET_TLS}"', $entry);
+        $this->assertStringContainsString('tls="tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY"', $entry);
+        $this->assertStringContainsString('XDG_DATA_HOME="$DATA"', $entry);
 
         // The Caddyfile has a place for it, on a line of its own.
         $this->assertContains('{$NUGGET_TLS_SITE}', $caddyfile);

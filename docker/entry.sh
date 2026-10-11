@@ -34,23 +34,43 @@ if [ -z "${APP_KEY:-}" ]; then
     export APP_KEY
 fi
 
-# HTTPS from the container itself, with a certificate the operator installed: a second site on
-# 8443 that hands each request to the plain one on APP_PORT, as a reverse proxy in front would.
-# So the app has to trust this container's own address, or it would take every request for http.
-if [ -n "${NUGGET_TLS_CERT:-}" ] || [ -n "${NUGGET_TLS_KEY:-}" ]; then
-    for file in "${NUGGET_TLS_CERT:-}" "${NUGGET_TLS_KEY:-}"; do
-        if [ -z "$file" ] || ! as_app test -r "$file"; then
-            echo "nugget: NUGGET_TLS_CERT and NUGGET_TLS_KEY must each name a file the app user (uid 1000) can read. '$file' is not one." >&2
-            exit 1
+# HTTPS from the container itself, when SERVER_NAME is a host name. ":80", or none, is plain HTTP
+# only. A second Caddy site on 443 hands each request to the plain one on APP_PORT, as a reverse
+# proxy in front would, so the app has to trust this container's own address.
+# Caddy gets and renews the certificate itself, unless it is told otherwise:
+#   NUGGET_TLS=internal                  signed by Caddy's own authority, for a name that is not public
+#   NUGGET_TLS_CERT and NUGGET_TLS_KEY   a certificate the operator installed
+case "${SERVER_NAME:-}" in
+    '' | :*)
+        if [ -n "${NUGGET_TLS_CERT:-}${NUGGET_TLS_KEY:-}${NUGGET_TLS:-}" ]; then
+            echo "nugget: a certificate is set but SERVER_NAME is not a host name, so the site is plain HTTP only." >&2
         fi
-    done
-    NUGGET_TLS_SITE="https://:8443 {
-	tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY
+        ;;
+    *)
+        tls="${NUGGET_TLS:+tls $NUGGET_TLS}"
+        if [ -n "${NUGGET_TLS_CERT:-}" ] || [ -n "${NUGGET_TLS_KEY:-}" ]; then
+            for file in "${NUGGET_TLS_CERT:-}" "${NUGGET_TLS_KEY:-}"; do
+                if [ -z "$file" ] || ! as_app test -r "$file"; then
+                    echo "nugget: NUGGET_TLS_CERT and NUGGET_TLS_KEY must each name a file the app user (uid 1000) can read. '$file' is not one." >&2
+                    exit 1
+                fi
+            done
+            tls="tls $NUGGET_TLS_CERT $NUGGET_TLS_KEY"
+        fi
+        # Plain HTTP on 80 only sends the reader on to HTTPS.
+        NUGGET_TLS_SITE="$SERVER_NAME {
+	$tls
 	reverse_proxy 127.0.0.1:${APP_PORT}
+}
+$(echo "$SERVER_NAME" | sed 's#[^, ][^, ]*#http://&#g') {
+	redir https://{host}{uri} permanent
 }"
-    TRUSTED_PROXIES="${TRUSTED_PROXIES:+$TRUSTED_PROXIES,}127.0.0.1"
-    export NUGGET_TLS_SITE TRUSTED_PROXIES
-fi
+        TRUSTED_PROXIES="${TRUSTED_PROXIES:+$TRUSTED_PROXIES,}127.0.0.1"
+        # Caddy keeps the certificates it gets in data/caddy, so an upgrade does not ask for them again.
+        XDG_DATA_HOME="$DATA"
+        export NUGGET_TLS_SITE TRUSTED_PROXIES XDG_DATA_HOME
+        ;;
+esac
 
 if [ "${NUGGET_MIGRATE:-1}" = 1 ]; then
     as_app php artisan migrate --force --no-interaction

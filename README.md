@@ -41,7 +41,9 @@ run `docker compose -f docker-compose-live.yml up -d` to recreate the containers
 | `APP_URL` | `http://localhost:8080` | the address people reach it at; used in emails |
 | `TRUSTED_PROXIES` | none | the reverse proxy in front whose forwarded headers are believed: its address, a comma list, or `*` |
 | `SESSION_SECURE_COOKIE` | off | `true` when the site is served over HTTPS |
-| `NUGGET_TLS_CERT`, `NUGGET_TLS_KEY` | none | a certificate and its key, for HTTPS from the container itself |
+| `SERVER_NAME` | `:80` | a host name turns on HTTPS from the container itself; `:80`, or none, is plain HTTP only |
+| `NUGGET_TLS` | none | `internal` for a certificate signed by Caddy's own authority, when the name is not public |
+| `NUGGET_TLS_CERT`, `NUGGET_TLS_KEY` | none | a certificate and key of your own, in place of the one Caddy gets |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | mail is written to the log | SMTP, for password reset emails |
 | `APP_KEY` | generated into `data/private/.app-key` | the key that encrypts sessions and exchange keys |
 | `NUGGET_LOGIN_MAX_ATTEMPTS`, `NUGGET_LOGIN_LOCKOUT_MINUTES` | `5`, `15` | failed logins before an email is locked out from an address, and for how long |
@@ -76,19 +78,32 @@ nugget.example.org {
 }
 ```
 
-**A certificate of your own**, served by the container. Put the certificate (with its chain) and
-the key in `certs/` beside the compose file, readable by uid 1000, uncomment the two lines marked
-`own certificate` in `docker-compose-live.yml`, and set:
+**From the container itself.** Uncomment the two lines marked `https` in
+`docker-compose-live.yml`, which publish ports 443 and 80, and give the site its name:
 
 ```bash
-NUGGET_TLS_CERT=/certs/fullchain.pem
-NUGGET_TLS_KEY=/certs/privkey.pem
-NUGGET_TLS_PORT=443                 # the host port; 443 is the default
+SERVER_NAME=nugget.example.org      # a host name turns HTTPS on; ":80", or none, is plain HTTP only
 ```
 
-The container then answers HTTPS on its port 8443 as well as HTTP on 8080. It reads the files when
-it starts, so restart it after renewing the certificate. It stops with a message if either file is
-missing or unreadable.
+Caddy, which is in the image, then gets a certificate for that name and renews it, with nothing
+else to set. The name has to be public and ports 80 and 443 have to reach the container, since
+that is how the certificate authority checks it. Port 80 otherwise only redirects to HTTPS. The
+certificates are kept in `data/caddy/`, so an upgrade does not ask for them again.
+
+Where that cannot work, say which certificate to use instead:
+
+```bash
+NUGGET_TLS=internal                 # signed by Caddy's own authority, for a name that is not public
+```
+
+```bash
+NUGGET_TLS_CERT=/certs/fullchain.pem    # or one of your own: put the files in certs/ beside the
+NUGGET_TLS_KEY=/certs/privkey.pem       # compose file, readable by uid 1000, and uncomment its mount
+```
+
+A browser trusts an `internal` certificate only once Caddy's root, `data/caddy/pki/authorities/local/root.crt`,
+is installed on it. A certificate of your own is read when the container starts, so restart it
+after a renewal.
 
 ## Upgrade
 

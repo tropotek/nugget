@@ -98,8 +98,8 @@ ENV APP_NAME=Nugget \
     APP_PORT=8080
 
 # Starts as root only to fix /app/data ownership; entry.sh drops to `app` for everything else.
-# 8443 answers only when a certificate is given (NUGGET_TLS_CERT, NUGGET_TLS_KEY).
-EXPOSE 8080 8443
+# 443 and 80 answer only when SERVER_NAME is a host name: HTTPS, and the redirect to it.
+EXPOSE 8080 443 80
 VOLUME ["/app/data"]
 ENTRYPOINT ["/app/docker/entry.sh"]
 
