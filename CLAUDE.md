@@ -18,7 +18,7 @@ docker compose --profile scheduler up -d          # the scheduler too: only when
 docker compose exec app composer install
 docker compose exec app php artisan migrate                # apply new migrations; keeps the data
 docker compose exec app php artisan db:seed                # add any missing development data (local only)
-docker compose exec app composer fresh                     # wipe the database, migrate and seed
+docker compose exec app composer fresh                     # roll every migration back, migrate and seed
 docker compose exec app php artisan nugget:rematch         # rebuild parcels and disposals (--asset=ID, --year=2025)
 docker compose exec app php artisan nugget:create-admin you@example.com   # create an admin, or promote a user
 docker compose exec app php artisan nugget:fetch-prices    # fetch and store every active asset's price now (--asset=ID)
@@ -45,6 +45,8 @@ bin/release v1.2.3                                # style, tests, tag and push: 
 The ports come from `APP_PORT`, `VITE_PORT` and `MAILPIT_PORT` in `.env`. Wicket's dev stack uses 8777 and 5777.
 
 The containers load `.env` as real environment variables, so a change to `.env` needs `docker compose up -d` to recreate them, and `phpunit.xml` forces its test settings with `<server force="true">`.
+
+Do not run `php artisan migrate:fresh` or `db:wipe` while the app container is up. On SQLite they empty the database file, and Octane still has it open in WAL mode, so every later query fails with "database is locked". `composer fresh` uses `migrate:refresh` for that reason. If it happens, `docker compose restart app` and migrate again.
 
 `composer test` clears the config cache and runs the suite. `phpunit.xml` raises `memory_limit` to 512M for it, because dompdf loads a whole font on top of what the suite holds. Tests use PHPUnit (not Pest) against an in-memory SQLite database.
 
