@@ -69,7 +69,9 @@ return [
             'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
             'journal_mode' => env('DB_JOURNAL_MODE', 'wal'),
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            // A transaction takes the write lock when it begins. A DEFERRED one that reads and
+            // then writes cannot wait for the lock, and fails at once with "database is locked".
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
